@@ -57,11 +57,27 @@
 <div id="status" class="hidden"></div>
 
 <div id="modal" class="overlay">
-  <div class="panel" id="panelContent"></div>
+  <div class="panel" id="panelContent">
+    <h2>Une collection de cubes</h2>
+    <p>Donne un nombre de cubes (entre 1 et 100 000)&nbsp;:</p>
+    <input id="countInput" type="number" min="1" max="100000" value="1000">
+    <p class="err" id="countErr"></p>
+    <button id="countGo" disabled>Afficher les cubes</button>
+    <p id="jsWarn" style="color:#c0392b;font-size:0.85rem;margin-top:10px;display:none;">
+      ⚠️ Le JavaScript ne s'est pas exécuté. Vérifie la console du navigateur (touche F12).
+    </p>
+  </div>
 </div>
 
 <script>
 "use strict";
+window.addEventListener('error', function (e) {
+  var w = document.getElementById('jsWarn');
+  if (w) {
+    w.style.display = 'block';
+    w.textContent = '⚠️ Erreur : ' + (e.message || 'inconnue');
+  }
+});
 
 const BG = "#fdf6ec";
 const CUBE = "#f0a04b";
@@ -147,6 +163,7 @@ function askCount() {
   const input = document.getElementById("countInput");
   input.focus();
   input.select();
+  document.getElementById("countGo").disabled = false;
   document.getElementById("countGo").onclick = () => {
     const v = parseInt(input.value, 10);
     const err = document.getElementById("countErr");
