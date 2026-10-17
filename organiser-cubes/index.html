@@ -12,56 +12,68 @@
     background: rgba(60, 40, 20, 0.25); z-index: 10;
   }
   .panel {
-    background: #fffdf8; border-radius: 14px; padding: 28px 34px; max-width: 460px;
+    background: #fffdf8; border-radius: 14px; padding: 28px 34px; max-width: 480px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.35); text-align: center;
   }
   .panel h2 { margin: 0 0 10px; color: #7f4f24; font-size: 1.25rem; }
   .panel p { margin: 6px 0; color: #5b4636; line-height: 1.45; }
-  .panel input {
-    font-size: 1.3rem; text-align: center; width: 200px; padding: 8px;
-    border: 2px solid #e0c9a6; border-radius: 8px; outline: none;
-  }
-  .panel input:focus { border-color: #e76f51; }
   .panel button {
     margin-top: 14px; font-size: 1.05rem; padding: 10px 26px; border: none; border-radius: 9px;
     background: #e76f51; color: #fff; cursor: pointer; font-weight: 600;
   }
   .panel button:hover { background: #d45f3d; }
-  .panel button:disabled { background: #cbb9a2; cursor: default; }
-  .err { color: #c0392b; font-size: 0.9rem; min-height: 1.2em; }
-  #bar {
-    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 10px; align-items: center; z-index: 5;
+  #askbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: rgba(255, 253, 248, 0.92); border-top: 2px solid #e0c9a6;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+    flex-wrap: wrap;
   }
-  #bar button {
-    font-size: 1.05rem; padding: 10px 24px; border: none; border-radius: 9px;
+  #askbar label { color: #7f4f24; font-weight: 600; font-size: 1.05rem; }
+  #askbar input {
+    font-size: 1.2rem; text-align: center; width: 140px; padding: 8px;
+    border: 2px solid #e0c9a6; border-radius: 8px; outline: none;
+  }
+  #askbar input:focus { border-color: #e76f51; }
+  #askbar button {
+    font-size: 1.05rem; padding: 10px 22px; border: none; border-radius: 9px;
     background: #2a9d8f; color: #fff; cursor: pointer; font-weight: 600;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
   }
-  #bar button:hover { background: #21867a; }
+  #askbar button:hover { background: #21867a; }
   #status {
-    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(255, 253, 248, 0.9); border-radius: 10px; padding: 8px 18px;
-    color: #5b4636; font-size: 0.95rem; z-index: 5; max-width: 90%; text-align: center;
+    position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(255, 253, 248, 0.92); border-radius: 10px; padding: 8px 18px;
+    color: #5b4636; font-size: 0.95rem; z-index: 5; max-width: 92%; text-align: center;
+    border: 1px solid #e0c9a6;
   }
   .big { font-size: 1.6rem; font-weight: 700; color: #7f4f24; }
+  .ok { color: #2a9d8f; font-weight: 700; }
+  .ko { color: #c0392b; font-weight: 700; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
-
-<div id="bar" class="hidden">
-  <button id="organiserBtn">Organiser</button>
-</div>
 <div id="status" class="hidden"></div>
-
-<div id="modal" class="overlay">
+<div id="askbar" class="hidden">
+  <label id="askLabel"></label>
+  <input id="askInput" type="number" min="0" inputmode="numeric" value="">
+  <button id="askGo">Valider</button>
+</div>
+<div id="modal" class="overlay hidden">
   <div class="panel" id="panelContent"></div>
 </div>
 
 <script>
 "use strict";
+window.addEventListener('error', function (e) {
+  var s = document.getElementById("status");
+  if (s) {
+    s.classList.remove("hidden");
+    s.textContent = "⚠️ Erreur : " + (e.message || "inconnue");
+  }
+});
 
 const BG = "#fdf6ec";
 const CUBE = "#f0a04b";
@@ -77,18 +89,22 @@ let scatterCanvas, scatterCtx;
 let settledCanvas, settledCtx;
 
 let N = 0;
-let scatterX, scatterY;     // Float32Array positions dispersées (px)
-let targetX, targetY;       // Float32Array positions organisées (px)
-let cubeS = 4;              // taille d'un cube en px (phase organisée)
+let scatterX, scatterY;     // positions dispersées (px)
+let targetX, targetY;       // positions organisées (px)
+let cubeGroup = null;       // index de groupe par cube (-1 = unité seule)
+let cubeS = 4;
 
-let state = "idle";         // idle | scatter | asking1 | ready | organizing | done
+let state = "idle";         // idle | scatter | organizing | done
 let firstEstimate = null;
 let rafId = null;
-let anim = null;            // données de l'animation d'organisation
+let anim = null;
 
 const modal = document.getElementById("modal");
 const panelContent = document.getElementById("panelContent");
-const organiserBtn = document.getElementById("organiserBtn");
+const askbar = document.getElementById("askbar");
+const askLabel = document.getElementById("askLabel");
+const askInput = document.getElementById("askInput");
+const askGo = document.getElementById("askGo");
 const statusBox = document.getElementById("status");
 
 function resize() {
@@ -131,44 +147,26 @@ function drawCube(g, x, y, s, scale) {
   }
 }
 
-// ---------- ÉTAPE 1 : demander le nombre ----------
-function askCount() {
-  state = "idle";
-  modal.classList.remove("hidden");
-  statusBox.classList.add("hidden");
-  document.getElementById("bar").classList.add("hidden");
-  panelContent.innerHTML = `
-    <h2>Une collection de cubes</h2>
-    <p>Donne un nombre de cubes (entre 1 et 100 000)&nbsp;:</p>
-    <input id="countInput" type="number" min="1" max="100000" value="1000" autofocus>
-    <p class="err" id="countErr"></p>
-    <button id="countGo">Afficher les cubes</button>
-  `;
-  const input = document.getElementById("countInput");
-  input.focus();
-  input.select();
-  document.getElementById("countGo").onclick = () => {
-    const v = parseInt(input.value, 10);
-    const err = document.getElementById("countErr");
-    if (!Number.isInteger(v) || v < 1 || v > 100000) {
-      err.textContent = "Choisis un nombre entier entre 1 et 100 000.";
-      return;
-    }
-    N = v;
-    modal.classList.add("hidden");
-    buildScatter();
-    askEstimate(1);
-  };
+// ---------- ÉTAPE 1 : nombre aléatoire, affichage dispersé ----------
+function start() {
+  N = Math.floor(Math.random() * 100001); // entre 0 et 100 000
+  state = "scatter";
+  firstEstimate = null;
+  buildScatter();
+  statusBox.classList.remove("hidden");
+  statusBox.innerHTML = N === 0
+    ? "La collection est vide&nbsp;! Zéro cube…"
+    : "Regarde cette collection de cubes. Sans les compter un par un, estime combien il y en a.";
+  askEstimate(1);
 }
 
-// ---------- Position dispersée : grille dense avec jitter ----------
-// Chaque cube garde au moins ~60 % de sa surface visible (chevauchement ≤ 40 %).
+// Position dispersée : grille dense avec jitter, chaque cube au moins à moitié visible
 function buildScatter() {
   resize();
   const W = canvas.width, H = canvas.height;
 
-  const cellFactor = Math.min(4, Math.max(1, Math.sqrt(3000 / N)));
-  let s = Math.sqrt((W * H * 0.72) / (N * cellFactor * cellFactor));
+  const cellFactor = Math.min(4, Math.max(1, Math.sqrt(3000 / Math.max(N, 1))));
+  let s = Math.sqrt((W * H * 0.72) / (Math.max(N, 1) * cellFactor * cellFactor));
   s = Math.max(1.5, Math.min(22, s));
   cubeS = s;
 
@@ -181,7 +179,6 @@ function buildScatter() {
   scatterX = new Float32Array(N);
   scatterY = new Float32Array(N);
 
-  // Ordre aléatoire sur la grille pour un aspect chaotique
   const order = new Int32Array(N);
   for (let i = 0; i < N; i++) order[i] = i;
   for (let i = N - 1; i > 0; i--) {
@@ -206,112 +203,83 @@ function buildScatter() {
 
   settledCanvas = makeCanvas();
   settledCtx = settledCanvas.getContext("2d");
-
-  state = "scatter";
-  firstEstimate = null;
-  statusBox.classList.remove("hidden");
-  statusBox.innerHTML = `Les <b>${fmt(N)}</b> cubes sont rangés... n'importe comment&nbsp;!`;
-  startLoop();
+  renderStill();
 }
 
-// ---------- ÉTAPE 2 : demander l'estimation ----------
+// ---------- Barre d'estimation (ne masque pas les cubes) ----------
 function askEstimate(step) {
-  state = step === 1 ? "asking1" : "done";
-  modal.classList.remove("hidden");
-  const intro = step === 1
-    ? "Regarde bien la collection, sans les compter un par un."
-    : "La collection est maintenant organisée. Combien de cubes vois-tu maintenant&nbsp;?";
-  panelContent.innerHTML = `
-    <h2>${step === 1 ? "Combien de cubes vois-tu&nbsp;?" : "Et maintenant, combien&nbsp;?"}</h2>
-    <p>${intro}</p>
-    <input id="estInput" type="number" min="0" value="" autofocus>
-    <p class="err" id="estErr"></p>
-    <button id="estGo">${step === 1 ? "Noter mon estimation" : "Noter ma réponse"}</button>
-  `;
-  const input = document.getElementById("estInput");
-  input.focus();
-  document.getElementById("estGo").onclick = () => {
-    const v = parseInt(input.value, 10);
-    const err = document.getElementById("estErr");
+  state = step === 1 ? "scatter" : "done";
+  askLabel.innerHTML = step === 1
+    ? "Combien de cubes vois-tu&nbsp;?"
+    : "Les cubes sont rangés. Combien y a-t-il de cubes maintenant&nbsp;?";
+  askInput.value = "";
+  askbar.classList.remove("hidden");
+  askInput.focus();
+  askGo.onclick = () => {
+    const v = parseInt(askInput.value, 10);
     if (!Number.isInteger(v) || v < 0) {
-      err.textContent = "Écris un nombre entier.";
+      askInput.style.borderColor = "#c0392b";
+      askInput.placeholder = "Nombre entier";
       return;
     }
+    askInput.style.borderColor = "#e0c9a6";
     if (step === 1) {
       firstEstimate = v;
-      showEstimateFeedback(v);
+      askbar.classList.add("hidden");
+      statusBox.innerHTML = "Estimation notée&nbsp;! Les cubes se rangent par dizaines, centaines puis milliers…";
+      startOrganise();
     } else {
+      askbar.classList.add("hidden");
       showFinalFeedback(v);
     }
   };
 }
 
-function showEstimateFeedback(v) {
-  const diff = v - N;
-  const words = diff === 0 ? "Exactement juste&nbsp;!" :
-    diff > 0 ? `C'est ${fmt(diff)} de plus que la réalité.` :
-               `C'est ${fmt(-diff)} de moins que la réalité.`;
-  panelContent.innerHTML = `
-    <h2>Ton estimation est notée&nbsp;!</h2>
-    <p class="big">${fmt(v)}</p>
-    <p>${words} Il y a en réalité <b>${fmt(N)}</b> cubes.</p>
-    <p>Difficile de lire un grand nombre quand tout est en vrac…<br>
-       Voyons si <b>organiser</b> la collection aide à y voir plus clair&nbsp;!</p>
-    <button id="goOrganise">Organiser</button>
-  `;
-  modal.classList.add("hidden");
-  document.getElementById("bar").classList.remove("hidden");
-  document.getElementById("goOrganise").onclick = startOrganise;
-  organiserBtn.onclick = startOrganise;
-  statusBox.innerHTML = `Tu as estimé <b>${fmt(v)}</b> cubes. Clique sur «&nbsp;Organiser&nbsp;» pour les ranger par dizaines, centaines et milliers.`;
-}
-
-// ---------- Organisation : calcul des positions cibles ----------
-// Renvoie { positions, labels, groups, bounds } en pixels.
+// ---------- Organisation : calcul des positions et groupes ----------
 function computeOrganisedLayout() {
   const W = canvas.width, H = canvas.height;
   const pad = 70 * DPR;
-  const availW = W - pad * 2, availH = H - pad * 2 - 40 * DPR;
+  const availW = W - pad * 2;
+  const availH = H - pad * 2 - 60 * DPR;
 
   const th = Math.floor(N / 1000);
   const h = Math.floor((N % 1000) / 100);
   const t = Math.floor((N % 100) / 10);
   const u = N % 10;
 
-  const gap = 3;      // en unités-cube
-  const bw = 100, bh = 10;  // un millier : 100 × 10 cubes (10 plaques de 100 bout à bout)
+  const gap = 3;
+  const bw = 100, bh = 10;
 
-  // Choisir le nombre de blocs-milliers par ligne qui maximise l'échelle
   let best = null;
   const maxBpr = Math.max(1, Math.ceil(Math.sqrt(Math.max(th, 1))));
   for (let bpr = 1; bpr <= maxBpr; bpr++) {
     const rows = Math.ceil(th / bpr) || 1;
-    const layoutW = Math.max(bpr * bw + (bpr - 1) * gap, (th ? 0 : 0));
-    const remW = h * (10 + gap) + (t ? t * 10 + (t - 1) * gap + (h ? gap : 0) : 0)
-               + (u ? (h || t ? gap : 0) + u * 1 + (u - 1) * gap : 0);
-    const totalW = Math.max(layoutW, th ? remW + (th ? gap : 0) : remW) + (th && remW ? gap : 0);
-    const widthUnits = Math.max(layoutW, 0) + (th && remW ? gap + remW : (th ? 0 : remW));
-    const heightUnits = rows * (bh + gap) + Math.max(h ? 10 : 0, 10); // ligne du reste (haut. 10)
-    const scale = Math.min(availW / widthUnits, availH / heightUnits, 22 * DPR);
+    const blocksW = th ? bpr * bw + (bpr - 1) * gap : 0;
+    let remW = 0;
+    if (h) remW += h * 10 + (h - 1) * gap;
+    if (t) remW += (h ? gap : 0) + t * 10 + (t - 1) * gap;
+    if (u) remW += (h || t ? gap : 0) + u * 1 + (u - 1) * gap;
+    const widthUnits = Math.max(blocksW, remW);
+    const heightUnits = rows * (bh + gap) + 10 + (th ? gap : 0);
+    const scale = Math.min(availW / Math.max(widthUnits, 1), availH / Math.max(heightUnits, 1), 22 * DPR);
     if (!best || scale > best.scale) best = { bpr, scale, widthUnits, heightUnits };
   }
 
-  const scale = best.scale;
-  cubeS = Math.max(1, scale);
-  const s = cubeS;
+  const scale = Math.max(1, best.scale);
+  cubeS = scale;
+  const s = scale;
   const g = gap * s;
   const positions = { x: new Float32Array(N), y: new Float32Array(N) };
-  const labels = [];
+  cubeGroup = new Int32Array(N).fill(-1);
   const groups = [];
 
   const totalW = best.widthUnits * s;
   const totalH = best.heightUnits * s;
   const originX = (W - totalW) / 2;
-  const originY = (H - totalH) / 2;
+  const originY = (H - totalH) / 2 + 10 * DPR;
 
   const bpr = best.bpr;
   const rows = Math.ceil(th / bpr) || 1;
-  const layoutW = (bpr * bw + (bpr - 1) * gap) * s;
 
   let idx = 0;
   for (let b = 0; b < th; b++) {
@@ -319,61 +287,75 @@ function computeOrganisedLayout() {
     const col = b % bpr;
     const bx = originX + col * (bw * s + g);
     const by = originY + row * (bh * s + g);
-    // un bloc-millier = 10 plaques de cent (chacune 10 × 10) collées en ligne
+    const gIdx = groups.length;
     for (let plate = 0; plate < 10; plate++) {
       const px = bx + plate * 10 * s;
       for (let yy = 0; yy < 10; yy++) {
         for (let xx = 0; xx < 10; xx++) {
           positions.x[idx] = px + xx * s;
           positions.y[idx] = by + yy * s;
+          cubeGroup[idx] = gIdx;
           idx++;
         }
       }
     }
-    groups.push({ x: bx - g / 2, y: by - g / 2, w: bw * s + g, h: bh * s + g });
-    labels.push({ x: bx + (bw * s) / 2, y: by + bh * s + Math.max(10, s * 1.2), text: "1 000", strong: true });
+    groups.push({
+      x: bx - g / 2, y: by - g / 2, w: bw * s + g, h: bh * s + g,
+      label: "1 000", strong: true, lastIdx: idx - 1, drawn: false,
+    });
   }
 
-  // Ligne du reste : centaines, dizaines, unités
-  const rowsUsed = th ? rows : 0;
-  const restY = originY + rowsUsed * (bh * s + g) + (th ? 0 : 0);
+  const restY = originY + (th ? rows * (bh * s + g) : 0);
   let rx = originX;
-  const baseY = restY + (10 * s); // bas de la ligne
+  const baseY = restY + 10 * s;
 
   for (let c = 0; c < h; c++) {
+    const gIdx = groups.length;
     for (let yy = 0; yy < 10; yy++) {
       for (let xx = 0; xx < 10; xx++) {
         positions.x[idx] = rx + xx * s;
         positions.y[idx] = baseY - (yy + 1) * s;
+        cubeGroup[idx] = gIdx;
         idx++;
       }
     }
-    groups.push({ x: rx - g / 2, y: baseY - 10 * s - g / 2, w: 10 * s + g, h: 10 * s + g });
-    labels.push({ x: rx + 5 * s, y: baseY + Math.max(10, s * 1.2), text: "100" });
+    groups.push({
+      x: rx - g / 2, y: baseY - 10 * s - g / 2, w: 10 * s + g, h: 10 * s + g,
+      label: "100", strong: false, lastIdx: idx - 1, drawn: false,
+    });
     rx += 10 * s + g;
   }
   for (let b = 0; b < t; b++) {
+    const gIdx = groups.length;
     for (let xx = 0; xx < 10; xx++) {
       positions.x[idx] = rx + xx * s;
       positions.y[idx] = baseY - s;
+      cubeGroup[idx] = gIdx;
       idx++;
     }
-    groups.push({ x: rx - g / 2, y: baseY - s - g / 2, w: 10 * s + g, h: s + g });
-    labels.push({ x: rx + 5 * s, y: baseY + Math.max(10, s * 1.2), text: "10" });
+    groups.push({
+      x: rx - g / 2, y: baseY - s - g / 2, w: 10 * s + g, h: s + g,
+      label: "10", strong: false, lastIdx: idx - 1, drawn: false,
+    });
     rx += 10 * s + g;
   }
   for (let k = 0; k < u; k++) {
     positions.x[idx] = rx;
     positions.y[idx] = baseY - s;
+    cubeGroup[idx] = -1;
     idx++;
     rx += s + g;
   }
   if (u) {
-    groups.push({ x: rx - (u * (s + g)) - g / 2, y: baseY - s - g / 2, w: u * (s + g) - g + g, h: s + g });
-    labels.push({ x: rx - (u * (s + g)) / 2, y: baseY + Math.max(10, s * 1.2), text: String(u) });
+    groups.push({
+      x: rx - (u * (s + g)) - g / 2, y: baseY - s - g / 2,
+      w: u * (s + g) - g + g, h: s + g,
+      label: String(u), strong: false, lastIdx: idx - 1, drawn: false,
+      unitsOnly: true,
+    });
   }
 
-  return { positions, labels, groups };
+  return { positions, groups };
 }
 
 function breakdownText() {
@@ -386,17 +368,14 @@ function breakdownText() {
   if (h) parts.push(`${h} centaine${h > 1 ? "s" : ""}`);
   if (t) parts.push(`${t} dizaine${t > 1 ? "s" : ""}`);
   if (u) parts.push(`${u} unité${u > 1 ? "s" : ""}`);
-  return parts.join(", ");
+  return parts.length ? parts.join(", ") : "aucun cube";
 }
 
-// ---------- ÉTAPE 3 : animation d'organisation ----------
+// ---------- Animation de rangement ----------
 function startOrganise() {
   if (state === "organizing") return;
   state = "organizing";
-  modal.classList.add("hidden");
-  document.getElementById("bar").classList.add("hidden");
-  statusBox.classList.remove("hidden");
-  statusBox.innerHTML = "Les cubes se rangent par dizaines, puis en centaines, puis en milliers…";
+  askbar.classList.add("hidden");
 
   const L = computeOrganisedLayout();
   targetX = L.positions.x;
@@ -409,9 +388,10 @@ function startOrganise() {
   anim = {
     start: performance.now(),
     waveSize, gapMs, durMs,
-    launchedUpTo: 0,   // cubes [0, launchedUpTo) ont décollé (et ont été effacés du fond)
-    labels: L.labels,
+    launchedUpTo: 0,
+    settledUpTo: 0,
     groups: L.groups,
+    finalizedUpTo: 0,
   };
   startLoop();
 }
@@ -420,13 +400,24 @@ function easeInOut(p) {
   return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
 }
 
+function drawGroupShape(grp, s) {
+  settledCtx.strokeStyle = "rgba(90, 50, 10, 0.6)";
+  settledCtx.lineWidth = Math.max(1.5, s * 0.18);
+  settledCtx.strokeRect(grp.x, grp.y, grp.w, grp.h);
+  if (grp.unitsOnly) return; // les unités restent visibles, pas d'étiquette
+  const fs = Math.max(11 * DPR, Math.min(s * 3, 24 * DPR));
+  settledCtx.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
+  settledCtx.textAlign = "center";
+  settledCtx.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
+  settledCtx.fillText(grp.label, grp.x + grp.w / 2, grp.y + grp.h + Math.max(10, s * 1.2));
+}
+
 function drawOrganizing(now) {
   const a = anim;
   const t = now - a.start;
   const waveIdx = Math.floor(t / a.gapMs);
   const launchTarget = Math.min(N, (waveIdx + 1) * a.waveSize);
 
-  // Lancer la vague : effacer les cubes dispersés partis, les considérer "en vol"
   if (launchTarget > a.launchedUpTo) {
     const s = cubeS;
     scatterCtx.fillStyle = BG;
@@ -436,15 +427,26 @@ function drawOrganizing(now) {
     a.launchedUpTo = launchTarget;
   }
 
-  // Arrivées : dessiner sur le calque "settled" tous les cubes dont le vol est fini
   const doneWave = Math.floor((t - a.durMs) / a.gapMs);
-  if (a.settledUpTo === undefined) a.settledUpTo = 0;
-  const settleTarget = Math.min(a.launchedUpTo, Math.max(0, (doneWave) * a.waveSize));
+  const settleTarget = Math.min(a.launchedUpTo, Math.max(0, doneWave * a.waveSize));
   if (settleTarget > a.settledUpTo) {
     for (let i = a.settledUpTo; i < settleTarget; i++) {
-      drawCube(settledCtx, targetX[i], targetY[i], cubeS, 1);
+      // Le cube disparaît dès qu'il est rangé ; seules les unités restent dessinées
+      if (cubeGroup[i] === -1) {
+        drawCube(settledCtx, targetX[i], targetY[i], cubeS, 1);
+      }
     }
     a.settledUpTo = settleTarget;
+  }
+
+  // Finaliser les groupes dont tous les cubes sont rangés
+  for (let gi = a.finalizedUpTo; gi < a.groups.length; gi++) {
+    const grp = a.groups[gi];
+    if (grp.lastIdx < a.settledUpTo) {
+      drawGroupShape(grp, cubeS);
+      grp.drawn = true;
+      a.finalizedUpTo = gi + 1;
+    } else break;
   }
 
   ctx.fillStyle = BG;
@@ -452,9 +454,7 @@ function drawOrganizing(now) {
   ctx.drawImage(scatterCanvas, 0, 0);
   ctx.drawImage(settledCanvas, 0, 0);
 
-  // Cubes en vol
-  const firstFlightWave = Math.max(0, doneWave + 1);
-  const firstFlight = firstFlightWave * a.waveSize;
+  const firstFlight = Math.max(0, (doneWave + 1)) * a.waveSize;
   for (let i = firstFlight; i < a.launchedUpTo; i++) {
     const p = (t - Math.floor(i / a.waveSize) * a.gapMs) / a.durMs;
     if (p <= 0 || p >= 1) continue;
@@ -467,62 +467,50 @@ function drawOrganizing(now) {
   }
 
   if (a.settledUpTo >= N && a.launchedUpTo >= N) {
-    finishOrganise(a);
+    finishOrganise();
   }
 }
 
-function finishOrganise(a) {
+function finishOrganise() {
   state = "done";
-  // contours et étiquettes des groupes, dessinés une fois pour toutes
-  settledCtx.strokeStyle = "rgba(90, 50, 10, 0.55)";
-  settledCtx.lineWidth = Math.max(1, cubeS * 0.12);
-  for (const grp of a.groups) {
-    settledCtx.strokeRect(grp.x, grp.y, grp.w, grp.h);
-  }
-  const fs = Math.max(11 * DPR, Math.min(cubeS * 3, 22 * DPR));
-  settledCtx.textAlign = "center";
-  for (const lab of a.labels) {
-    settledCtx.fillStyle = lab.strong ? "#7f4f24" : "#8a6a4a";
-    settledCtx.font = `${lab.strong ? "bold " : ""}${fs}px sans-serif`;
-    settledCtx.fillText(lab.text, lab.x, lab.y);
-  }
-  statusBox.innerHTML = `<b>${fmt(N)}</b> cubes = ${breakdownText()}.`;
+  statusBox.innerHTML = `Collection organisée&nbsp;! Lis les groupes&nbsp;: ${breakdownText()}.`;
   cancelAnimationFrame(rafId);
   rafId = null;
   renderStill();
-  setTimeout(() => askEstimate(2), 700);
+  setTimeout(() => askEstimate(2), 600);
 }
 
+// ---------- Résultat ----------
 function showFinalFeedback(v) {
-  const diff1 = firstEstimate - N;
-  const diff2 = v - N;
-  const quality = (x) => x === 0 ? "exactement juste" :
-    Math.abs(x) <= Math.max(1, N * 0.05) ? "très proche" :
-    Math.abs(x) <= N * 0.2 ? "pas loin" : "loin du compte";
+  const good = v === N;
+  const diff = v - N;
   panelContent.innerHTML = `
-    <h2>Avant / Après</h2>
-    <p>Estimation <b>avant</b> l'organisation&nbsp;: <span class="big">${fmt(firstEstimate)}</span> <br>
-       <small>(${quality(diff1)})</small></p>
-    <p>Estimation <b>après</b> l'organisation&nbsp;: <span class="big">${fmt(v)}</span> <br>
-       <small>(${quality(diff2)})</small></p>
-    <p>La collection contient en réalité <b>${fmt(N)}</b> cubes&nbsp;:<br>${breakdownText()}.</p>
-    <p>On ne compte pas les cubes un par un&nbsp;: on lit les groupes&nbsp;!</p>
-    <button id="restartBtn">Recommencer avec un autre nombre</button>
+    <h2>${good ? "🎉 Bonne réponse&nbsp;!" : "Pas tout à fait…"}</h2>
+    <p>Ta réponse après organisation&nbsp;: <span class="big">${fmt(v)}</span></p>
+    <p>${good
+      ? `C'est exactement le bon nombre&nbsp;! Il y a bien <b>${fmt(N)}</b> cubes.`
+      : `Il y a en réalité <b>${fmt(N)}</b> cubes, soit ${diff > 0 ? `${fmt(diff)} de moins que ta réponse` : `${fmt(-diff)} de plus que ta réponse`}.`}</p>
+    <p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
+      Ton estimation <b>avant</b> l'organisation était&nbsp;: <b>${fmt(firstEstimate)}</b>
+      (${firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
+    </p>
+    <p>${breakdownText()} — on lit la quantité dans les groupes, sans compter les cubes un par un.</p>
+    <button id="restartBtn">Recommencer</button>
   `;
+  modal.classList.remove("hidden");
   document.getElementById("restartBtn").onclick = () => {
+    modal.classList.add("hidden");
     cancelAnimationFrame(rafId);
     rafId = null;
-    askCount();
+    start();
   };
 }
 
 function renderStill() {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  if (state === "scatter" || state === "asking1" || state === "ready") {
-    ctx.drawImage(scatterCanvas, 0, 0);
-  } else if (state === "done" || state === "organizing") {
-    ctx.drawImage(scatterCanvas, 0, 0);
+  if (scatterCanvas) ctx.drawImage(scatterCanvas, 0, 0);
+  if (settledCanvas && (state === "done" || state === "organizing")) {
     ctx.drawImage(settledCanvas, 0, 0);
   }
 }
@@ -542,15 +530,12 @@ function startLoop() {
 }
 
 window.addEventListener("resize", () => {
-  // Réorganise proprement au lieu de recalculer la dispersion aléatoire
-  if (N > 0 && (state === "done" || state === "organizing")) return;
-  if (N > 0 && (state === "scatter" || state === "asking1" || state === "ready")) {
+  if (N > 0 && state === "scatter") {
     buildScatter();
-    if (state !== "scatter") { /* recalcul visuel uniquement */ }
   }
 });
 
-askCount();
+start();
 </script>
 </body>
 </html>
