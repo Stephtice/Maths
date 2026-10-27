@@ -436,24 +436,42 @@
       }
     }
     if (coords.length !== 3) return;
-    var minX = Math.min.apply(null, coords.map(function (p) { return p.x; }));
-    var minY = Math.min.apply(null, coords.map(function (p) { return p.y; }));
-    var maxX = Math.max.apply(null, coords.map(function (p) { return p.x + p.w; }));
-    var maxY = Math.max.apply(null, coords.map(function (p) { return p.y + p.h; }));
     var marge = 14;
-    var x = minX - marge, y = minY - marge;
-    var w = (maxX - minX) + 2 * marge, h = (maxY - minY) + 2 * marge;
+    var centres = coords.map(function (p) { return { x: p.x + (p.w / 2), y: p.y + (p.h / 2) }; });
+    var cx = (centres[0].x + centres[1].x + centres[2].x) / 3;
+    var cy = (centres[0].y + centres[1].y + centres[2].y) / 3;
+    var extremes = coords.map(function (p) {
+      return [
+        { x: p.x, y: p.y }, { x: p.x + p.w, y: p.y },
+        { x: p.x, y: p.y + p.h }, { x: p.x + p.w, y: p.y + p.h }
+      ];
+    }).reduce(function (a, b) { return a.concat(b); }, []);
+    var angle = Math.atan2(centres[2].y - centres[0].y, centres[2].x - centres[0].x);
+    var cos = Math.cos(angle), sin = Math.sin(angle);
+    var rx = 0, ry = 0;
+    extremes.forEach(function (e) {
+      var dx = e.x - cx, dy = e.y - cy;
+      var u = (dx * cos) + (dy * sin);
+      var v = (-dx * sin) + (dy * cos);
+      if (Math.abs(u) > rx) rx = Math.abs(u);
+      if (Math.abs(v) > ry) ry = Math.abs(v);
+    });
+    rx += marge; ry += marge;
+    if (ry < 32) ry = 32;
+    var groupe = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    groupe.setAttribute('transform', 'translate(' + cx + ' ' + cy + ') rotate(' + (angle * 180 / Math.PI) + ')');
     var ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-    ellipse.setAttribute('cx', x + (w / 2));
-    ellipse.setAttribute('cy', y + (h / 2));
-    ellipse.setAttribute('rx', (w / 2) - 4);
-    ellipse.setAttribute('ry', (h / 2) - 4);
+    ellipse.setAttribute('cx', 0);
+    ellipse.setAttribute('cy', 0);
+    ellipse.setAttribute('rx', rx);
+    ellipse.setAttribute('ry', ry);
     ellipse.setAttribute('fill', 'none');
     ellipse.setAttribute('stroke', '#e76f51');
     ellipse.setAttribute('stroke-width', '5');
     ellipse.setAttribute('stroke-dasharray', '14 8');
     ellipse.setAttribute('stroke-linecap', 'round');
-    svg.appendChild(ellipse);
+    groupe.appendChild(ellipse);
+    svg.appendChild(groupe);
   }
 
   function choisirOp(op) {
