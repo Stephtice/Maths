@@ -448,6 +448,7 @@ function computeOrganisedLayout() {
     const cell = s * 2 + g;
     const diceW = cell * 2 + s;   // largeur d'une constellation
     const diceH = cell * 2 + s;   // hauteur d'une constellation
+    const unitsStartX = rx;       // début réel de la zone des unités
     let remaining = u;
     while (remaining > 0) {
       const n = Math.min(remaining, 5);
@@ -461,10 +462,11 @@ function computeOrganisedLayout() {
       }
       rx += diceW + g * 2;
     }
-    const totalUnitsW = rx - g * 2 - originX;
+    // largeur réellement occupée : dernière position + un cube, moins l'écart final
+    const totalUnitsW = (rx - g * 2) - unitsStartX;
     groups.push({
       kind: "units",
-      x: originX, y: baseY - diceH, w: totalUnitsW, h: diceH,
+      x: unitsStartX, y: baseY - diceH, w: totalUnitsW, h: diceH,
       label: String(u), strong: false, lastIdx: idx - 1, drawn: false,
       unitsOnly: true,
     });
