@@ -111,6 +111,12 @@ const statusBox = document.getElementById("status");
 
 let maxN = 100000; // nombre maximum choisi par l'utilisateur
 let showLabels = true; // variante : afficher ou non la valeur des blocs
+// Persistance du choix « afficher la valeur des blocs » entre les sessions
+try {
+  const saved = localStorage.getItem("cubes-showLabels");
+  if (saved === "0") showLabels = false;
+  if (saved === "1") showLabels = true;
+} catch (e) { /* localStorage indisponible : valeur par défaut */ }
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -172,7 +178,7 @@ function askMax() {
     <input id="maxInput" type="number" min="1" max="100000" inputmode="numeric" placeholder="Ex. 250">
     <p class="err" id="maxErr"></p>
     <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin:12px 0; color:#5b4636; cursor:pointer;">
-      <input id="labelsChk" type="checkbox" checked style="width:18px; height:18px;">
+      <input id="labelsChk" type="checkbox" style="width:18px; height:18px;">
       Afficher la valeur des blocs (1 000, 100, 10…)
     </label>
     <button id="maxGo">C'est parti&nbsp;!</button>
@@ -191,6 +197,9 @@ function askMax() {
     }
     maxN = v;
     showLabels = document.getElementById("labelsChk").checked;
+    try {
+      localStorage.setItem("cubes-showLabels", showLabels ? "1" : "0");
+    } catch (e) { /* stockage indisponible : choix non conservé */ }
     modal.classList.add("hidden");
     start();
   };
@@ -201,6 +210,8 @@ function askMax() {
     btn.style.background = "#8ab17d";
     btn.onclick = () => go(parseInt(btn.dataset.max, 10));
   }
+  // pré-coche la case selon le dernier choix sauvegardé
+  document.getElementById("labelsChk").checked = showLabels;
   const input = document.getElementById("maxInput");
   input.style.fontSize = "1.1rem";
   input.style.textAlign = "center";
