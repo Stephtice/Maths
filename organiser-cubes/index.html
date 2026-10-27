@@ -448,7 +448,9 @@ function computeOrganisedLayout() {
     const col = Math.floor(b / 5);      // colonne courante
     const row = b % 5;                  // rangée dans la colonne (0 = en haut... on empile vers le haut)
     const bx = rx + col * (10 * s + g);
-    const by = baseY - (row + 1) * s - row * g;
+    // espace vertical réduit entre réglettes empilées : 1 cube
+    const vGap = s;
+    const by = baseY - (row + 1) * s - row * vGap;
     for (let xx = 0; xx < 10; xx++) {
       positions.x[idx] = bx + xx * s;
       positions.y[idx] = by;
