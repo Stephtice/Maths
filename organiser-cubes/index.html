@@ -110,6 +110,7 @@ const askGo = document.getElementById("askGo");
 const statusBox = document.getElementById("status");
 
 let maxN = 100000; // nombre maximum choisi par l'utilisateur
+let showLabels = true; // variante : afficher ou non la valeur des blocs
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -170,6 +171,10 @@ function askMax() {
     <p style="margin-top:14px;">… ou choisis un nombre maximum libre&nbsp;:</p>
     <input id="maxInput" type="number" min="1" max="100000" inputmode="numeric" placeholder="Ex. 250">
     <p class="err" id="maxErr"></p>
+    <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin:12px 0; color:#5b4636; cursor:pointer;">
+      <input id="labelsChk" type="checkbox" checked style="width:18px; height:18px;">
+      Afficher la valeur des blocs (1 000, 100, 10…)
+    </label>
     <button id="maxGo">C'est parti&nbsp;!</button>
   `;
   const choices = document.getElementById("maxChoices");
@@ -185,6 +190,7 @@ function askMax() {
       return;
     }
     maxN = v;
+    showLabels = document.getElementById("labelsChk").checked;
     modal.classList.add("hidden");
     start();
   };
@@ -578,13 +584,15 @@ function drawBase10(grp, s) {
     g2.strokeRect(grp.x, grp.y, grp.w, grp.h);
   }
 
-  // étiquette
-  const fs = Math.max(11 * DPR, Math.min(s * 3, 24 * DPR));
-  g2.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
-  g2.textAlign = "center";
-  g2.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
-  const labelY = grp.kind === "thousand" ? grp.y + grp.h + Math.max(10, s) : grp.y + grp.h + Math.max(10, s * 1.4);
-  g2.fillText(grp.label, grp.x + grp.w / 2, labelY);
+  // étiquette (masquée dans la variante « sans valeurs »)
+  if (showLabels) {
+    const fs = Math.max(11 * DPR, Math.min(s * 3, 24 * DPR));
+    g2.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
+    g2.textAlign = "center";
+    g2.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
+    const labelY = grp.kind === "thousand" ? grp.y + grp.h + Math.max(10, s) : grp.y + grp.h + Math.max(10, s * 1.4);
+    g2.fillText(grp.label, grp.x + grp.w / 2, labelY);
+  }
 }
 
 function drawOrganizing(now) {
