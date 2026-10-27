@@ -22,7 +22,12 @@
   #plateau {
     background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
     padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
-    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px;
+    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 460px;
+  }
+
+  #zone-jeu {
+    display: flex; flex-wrap: wrap; gap: 18px;
+    align-items: center; justify-content: center; width: 100%;
   }
 
   #grille { display: flex; flex-direction: column; gap: 6px; }
@@ -34,6 +39,37 @@
   }
   .pion:active { transform: scale(.92); }
   .pion.actif { background: #f7c948; color: #5b4636; box-shadow: 0 0 0 3px #e76f5155; }
+
+  #cote {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    min-width: 130px;
+  }
+  #expression {
+    min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: #7f4f24;
+    text-align: center; white-space: nowrap;
+  }
+  #chip-resultat {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 3px solid #e0c9a6; background: #fffdf8; color: #7f4f24;
+    font-size: 1.35rem; font-weight: 700; cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+  #chip-resultat:active { transform: scale(.92); }
+  #chip-resultat.actif { border-color: #e76f51; background: #f7c948; color: #5b4636; }
+  #chip-resultat[hidden] { display: none; }
+  #ops { margin-top: 0; }
+  button.op {
+    width: 52px; height: 52px; border: none; border-radius: 10px;
+    background: #7f4f24; color: #fff; font-size: 1.5rem; font-weight: 700; cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  button.op:active { transform: scale(.92); }
+  button.op:disabled { background: #d8c9b4; cursor: default; }
+  button.op.actif { background: #e76f51; }
+  #consigne {
+    margin: 0; font-size: .85rem; color: #b0a08a; text-align: center; max-width: 150px;
+    min-height: 2.6em;
+  }
 
   #zone-jeton { text-align: center; margin-top: 14px; width: 100%; }
   #jeton-affiche {
@@ -61,7 +97,7 @@
   #message.ko { display: block; background: #fee2e2; color: #b91c1c; }
 
   #regles {
-    margin-top: 16px; max-width: 420px; width: 100%;
+    margin-top: 16px; width: 100%;
     background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px; padding: 14px 16px;
     font-size: .88rem; line-height: 1.5;
   }
@@ -78,7 +114,7 @@
 <body>
 <header>
   <h1>TRIO — jeu de calcul mental</h1>
-  <p>Trouve 3 nombres alignés qui donnent le résultat du jeton&nbsp;: une multiplication, puis une addition ou une soustraction.</p>
+  <p>Clique une carte, choisis un signe, clique une deuxième carte&nbsp;: le résultat apparaît à côté. Clique sur ce résultat, choisis un signe, puis clique la troisième carte pour finir le calcul.</p>
 </header>
 
 <div id="scorebar">
@@ -88,7 +124,19 @@
 </div>
 
 <div id="plateau">
-  <div id="grille"></div>
+  <div id="zone-jeu">
+    <div id="grille"></div>
+    <div id="cote">
+      <div id="expression"></div>
+      <button type="button" id="chip-resultat" hidden></button>
+      <div class="boutons" id="ops">
+        <button type="button" class="op" data-op="+">+</button>
+        <button type="button" class="op" data-op="-">−</button>
+        <button type="button" class="op" data-op="*">×</button>
+      </div>
+      <p id="consigne"></p>
+    </div>
+  </div>
 
   <div id="zone-jeton">
     <div class="boutons" id="actions">
@@ -112,7 +160,7 @@
     Le premier joueur à 10 jetons a gagné&nbsp;!
     <details>
       <summary>Exemple</summary>
-      <p style="margin:6px 0 0">Jeton <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;!</p>
+      <p style="margin:6px 0 0">Jeton <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: clique 3, choisis <b>×</b>, clique 5 → le résultat 15 apparaît à côté. Clique sur <b>15</b>, choisis <b>−</b>, clique 1&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;!</p>
     </details>
   </div>
 </div>
@@ -125,16 +173,20 @@
   var PAS = [];
   for (var dl = -1; dl <= 1; dl++) for (var dc = -1; dc <= 1; dc++)
     if (dl !== 0 || dc !== 0) PAS.push([dl, dc]);
+  var SIGNES = { '+': '+', '-': '−', '*': '×' };
 
   var grille, pioche, jeton, gagnes, ecartes, fini;
   var debut, chronoTimer = null;
-  var selection = [];
+  var etape, pion1, signe1, pion2, signe2;
 
   var $ = function (id) { return document.getElementById(id); };
   var grilleEl = $('grille'), messageEl = $('message'), chronoEl = $('chrono');
-  var actionsEl = $('actions');
+  var actionsEl = $('actions'), exprEl = $('expression');
+  var chipEl = $('chip-resultat'), opsEl = $('ops'), consigneEl = $('consigne');
 
   function alea(n) { return Math.floor(Math.random() * n); }
+
+  function calc(a, s, b) { return s === '+' ? a + b : s === '-' ? a - b : a * b; }
 
   function nouvellePartie() {
     var pions = [];
@@ -153,12 +205,46 @@
       var q = alea(p + 1), u = pioche[p]; pioche[p] = pioche[q]; pioche[q] = u;
     }
     jeton = null; gagnes = 0; ecartes = 0; fini = false;
-    selection = [];
+    reinitialiserCalcul();
     dessinerGrille();
     message('', null);
     majScore();
     majActions();
     arreterChrono();
+  }
+
+  function reinitialiserCalcul() {
+    etape = 'pion1'; pion1 = null; signe1 = null; pion2 = null; signe2 = null;
+    exprEl.textContent = '';
+    chipEl.hidden = true;
+    chipEl.classList.remove('actif');
+    marquerOps(null);
+    consigne(jeton !== null && !fini ? 'Clique une première carte.' : '');
+    marquerPions();
+  }
+
+  function consigne(txt) { consigneEl.textContent = txt; }
+
+  function marquerOps(actif) {
+    var boutons = opsEl.querySelectorAll('button.op');
+    for (var i = 0; i < boutons.length; i++) {
+      var b = boutons[i];
+      b.disabled = !(etape === 'signe1' || etape === 'signe2');
+      if (actif !== null && b.dataset.op === actif) b.classList.add('actif');
+      else b.classList.remove('actif');
+    }
+  }
+
+  function marquerPions() {
+    var boutons = grilleEl.querySelectorAll('button.pion');
+    for (var i = 0; i < boutons.length; i++) {
+      var b = boutons[i];
+      var l = +b.dataset.l, c = +b.dataset.c;
+      var choisi =
+        (pion1 && pion1.l === l && pion1.c === c) ||
+        (pion2 && pion2.l === l && pion2.c === c);
+      if (choisi) b.classList.add('actif'); else b.classList.remove('actif');
+    }
   }
 
   function dessinerGrille() {
@@ -172,28 +258,96 @@
         b.className = 'pion';
         b.textContent = valeur;
         b.dataset.l = l; b.dataset.c = c;
-        b.addEventListener('click', function () { choisir(b, l, c); });
+        b.addEventListener('click', function () { choisir(l, c); });
         div.appendChild(b);
       });
       grilleEl.appendChild(div);
     });
+    marquerPions();
   }
 
-  function choisir(btn, l, c) {
+  function choisir(l, c) {
     if (jeton === null || fini) return;
-    var idx = selection.findIndex(function (s) { return s.l === l && s.c === c; });
-    if (idx >= 0) {
-      selection.splice(idx, 1);
-      btn.classList.remove('actif');
-    } else {
-      if (selection.length >= 3) {
-        var ancien = selection.shift();
-        var precedent = grilleEl.querySelector('.pion[data-l="' + ancien.l + '"][data-c="' + ancien.c + '"]');
-        if (precedent) precedent.classList.remove('actif');
+    if (etape === 'pion1') {
+      pion1 = { l: l, c: c };
+      etape = 'signe1';
+      exprEl.textContent = grille[l][c];
+      consigne('Choisis un signe d’opération.');
+      message('', null);
+      marquerOps(null);
+      marquerPions();
+    } else if (etape === 'signe1') {
+      if (pion1 && pion1.l === l && pion1.c === c) {
+        reinitialiserCalcul();
       }
-      selection.push({ l: l, c: c });
-      btn.classList.add('actif');
+    } else if (etape === 'pion2') {
+      if (pion1 && pion1.l === l && pion1.c === c) return;
+      pion2 = { l: l, c: c };
+      var resultat = calc(grille[pion1.l][pion1.c], signe1, grille[l][c]);
+      exprEl.textContent = grille[pion1.l][pion1.c] + ' ' + SIGNES[signe1] + ' ' + grille[l][c];
+      chipEl.textContent = resultat;
+      chipEl.hidden = false;
+      chipEl.classList.remove('actif');
+      etape = 'resultat';
+      consigne('Clique sur le résultat pour continuer.');
+      message('', null);
+      marquerPions();
+    } else if (etape === 'pion3') {
+      if ((pion1 && pion1.l === l && pion1.c === c) || (pion2 && pion2.l === l && pion2.c === c)) return;
+      var cases = [pion1, pion2, { l: l, c: c }];
+      if (!alignes(cases)) {
+        message('Les trois cartes ne sont pas alignées côte à côte.', 'ko');
+        reinitialiserCalcul();
+        return;
+      }
+      var intermediaire = calc(grille[pion1.l][pion1.c], signe1, grille[pion2.l][pion2.c]);
+      var final = calc(intermediaire, signe2, grille[l][c]);
+      var expr = grille[pion1.l][pion1.c] + ' ' + SIGNES[signe1] + ' ' +
+                 grille[pion2.l][pion2.c] + ' ' + SIGNES[signe2] + ' ' + grille[l][c];
+      exprEl.textContent = expr + ' = ' + final;
+      if (final !== jeton) {
+        message(expr + ' = ' + final + ', ce n’est pas ' + jeton + '.', 'ko');
+        reinitialiserCalcul();
+        return;
+      }
+      gagnes++;
+      var msg = 'TRIO gagné ! ' + expr + ' = ' + jeton;
+      jeton = null;
+      arreterChrono();
+      if (gagnes >= VICTOIRE) { fini = true; msg += ' — victoire !'; }
+      else if (pioche.length === 0) { fini = true; msg += ' — pioche épuisée !'; }
+      message(msg, 'ok');
+      reinitialiserCalcul();
+      majScore();
+      majActions();
     }
+  }
+
+  function choisirOp(op) {
+    if (jeton === null || fini) return;
+    if (etape === 'signe1') {
+      signe1 = op;
+      etape = 'pion2';
+      exprEl.textContent = grille[pion1.l][pion1.c] + ' ' + SIGNES[op];
+      consigne('Clique une deuxième carte.');
+      message('', null);
+      marquerOps(op);
+    } else if (etape === 'signe2') {
+      signe2 = op;
+      etape = 'pion3';
+      exprEl.textContent = chipEl.textContent + ' ' + SIGNES[op];
+      consigne('Clique la troisième carte pour finir le calcul.');
+      message('', null);
+      marquerOps(op);
+    }
+  }
+
+  function choisirResultat() {
+    if (etape !== 'resultat' || jeton === null || fini) return;
+    chipEl.classList.add('actif');
+    etape = 'signe2';
+    consigne('Choisis un signe pour finir le calcul.');
+    marquerOps(null);
   }
 
   function alignes(cases) {
@@ -216,51 +370,14 @@
     return false;
   }
 
-  function formules(a, b, c, cible) {
-    var f = [];
-    if (a * b + c === cible) f.push(a + ' × ' + b + ' + ' + c + ' = ' + cible);
-    if (a * b - c === cible) f.push(a + ' × ' + b + ' − ' + c + ' = ' + cible);
-    if (a * c + b === cible) f.push(a + ' × ' + c + ' + ' + b + ' = ' + cible);
-    if (a * c - b === cible) f.push(a + ' × ' + c + ' − ' + b + ' = ' + cible);
-    if (b * c + a === cible) f.push(b + ' × ' + c + ' + ' + a + ' = ' + cible);
-    if (b * c - a === cible) f.push(b + ' × ' + c + ' − ' + a + ' = ' + cible);
-    return f;
-  }
-
   function piocher() {
     if (fini || pioche.length === 0) return;
     jeton = pioche.pop();
-    selection = [];
-    dessinerGrille();
+    reinitialiserCalcul();
     message('', null);
     majScore();
     majActions();
     lancerChrono();
-  }
-
-  function valider() {
-    if (jeton === null || fini) return;
-    if (selection.length < 3) { message('Sélectionne trois pions en tapant dessus.', 'ko'); return; }
-    if (!alignes(selection)) { message('Les trois pions ne sont pas alignés côte à côte.', 'ko'); return; }
-    var a = grille[selection[0].l][selection[0].c];
-    var b = grille[selection[1].l][selection[1].c];
-    var c = grille[selection[2].l][selection[2].c];
-    var f = formules(a, b, c, jeton);
-    if (f.length === 0) {
-      message(a + ', ' + b + ', ' + c + ' ne permettent pas d’obtenir ' + jeton + '.', 'ko');
-      return;
-    }
-    gagnes++;
-    var msg = 'TRIO gagné ! ' + f.join(' ; ');
-    jeton = null;
-    arreterChrono();
-    if (gagnes >= VICTOIRE) { fini = true; msg += ' — victoire !'; }
-    else if (pioche.length === 0) { fini = true; msg += ' — pioche épuisée !'; }
-    message(msg, 'ok');
-    selection = [];
-    dessinerGrille();
-    majScore();
-    majActions();
   }
 
   function ecarter() {
@@ -269,8 +386,7 @@
     jeton = null;
     arreterChrono();
     message('Jeton écarté.', 'ko');
-    selection = [];
-    dessinerGrille();
+    reinitialiserCalcul();
     if (pioche.length === 0) fini = true;
     majScore();
     majActions();
@@ -314,12 +430,6 @@
       jetonAff.textContent = jeton;
       actionsEl.appendChild(jetonAff);
 
-      var bv = document.createElement('button');
-      bv.className = 'action';
-      bv.textContent = '✔ Valider mon TRIO';
-      bv.addEventListener('click', valider);
-      actionsEl.appendChild(bv);
-
       var be = document.createElement('button');
       be.className = 'action secondaire';
       be.textContent = 'Aucun TRIO — écarter';
@@ -342,6 +452,13 @@
     }
   }
 
+  var boutonsOps = opsEl.querySelectorAll('button.op');
+  for (var i = 0; i < boutonsOps.length; i++) {
+    (function (b) {
+      b.addEventListener('click', function () { choisirOp(b.dataset.op); });
+    })(boutonsOps[i]);
+  }
+  chipEl.addEventListener('click', choisirResultat);
   $('btn-nouvelle').addEventListener('click', nouvellePartie);
   nouvellePartie();
 })();
