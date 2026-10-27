@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIO — jeu de calcul mental</title>
+<!-- Règles : 49 pions 1 à 9 en carré 7×7 ; un jeton est retourné, trouver 3 nombres alignés côte à côte qui donnent la valeur du jeton avec une multiplication et une addition — ou une soustraction. 5 minutes par jeton, victoire à 10 jetons. -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; color: #5b4636; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
+  header { text-align: center; margin-bottom: 10px; }
+  h1 { margin: 0; color: #7f4f24; font-size: 1.6rem; }
+  header p { margin: 6px 0 0; font-size: .95rem; }
+
+  #scorebar {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px;
+    font-size: .9rem; color: #7f4f24; margin-bottom: 10px;
+  }
+  #scorebar b { color: #e76f51; font-size: 1.05rem; }
+
+  #plateau {
+    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 420px;
+  }
+
+  #grille { display: flex; flex-direction: column; gap: 6px; }
+  .ligne { display: flex; gap: 6px; }
+  .pion {
+    width: 44px; height: 44px; border: none; border-radius: 8px;
+    background: #7f4f24; color: #fff; font-size: 1.15rem; font-weight: 700;
+    cursor: pointer; transition: transform .1s, background .15s;
+  }
+  .pion:active { transform: scale(.92); }
+  .pion.actif { background: #f7c948; color: #5b4636; box-shadow: 0 0 0 3px #e76f5155; }
+
+  #zone-jeton { text-align: center; margin-top: 14px; width: 100%; }
+  #jeton-affiche {
+    display: inline-block; width: 54px; height: 54px; line-height: 54px;
+    border-radius: 50%; background: #fee2e2; color: #b91c1c;
+    font-size: 1.5rem; font-weight: 700; vertical-align: middle;
+  }
+  #chrono { margin: 8px 0 0; font-size: .9rem; color: #b0a08a; }
+
+  .boutons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
+  button.action {
+    font-size: 1.05rem; padding: 10px 22px; border: none; border-radius: 9px;
+    background: #e76f51; color: #fff; cursor: pointer; font-weight: 600;
+  }
+  button.action:hover { background: #d45f3d; }
+  button.action:disabled { background: #d8c9b4; cursor: default; }
+  button.secondaire { background: #f7c948; color: #5b4636; }
+  button.secondaire:hover { background: #e9b93b; }
+
+  #message {
+    margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+    font-size: .95rem; display: none; width: 100%; text-align: center;
+  }
+  #message.ok { display: block; background: #d1fae5; color: #065f46; }
+  #message.ko { display: block; background: #fee2e2; color: #b91c1c; }
+
+  #regles {
+    margin-top: 16px; max-width: 420px; width: 100%;
+    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px; padding: 14px 16px;
+    font-size: .88rem; line-height: 1.5;
+  }
+  #regles h2 { margin: 0 0 8px; color: #7f4f24; font-size: 1.05rem; }
+  #regles details summary { cursor: pointer; color: #e76f51; font-weight: 600; margin-top: 8px; }
+
+  a.retour { margin-top: 16px; font-size: .9rem; color: #b0a08a; }
+
+  @media (max-width: 400px) {
+    .pion { width: 38px; height: 38px; font-size: 1rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>TRIO — jeu de calcul mental</h1>
+  <p>Trouve 3 nombres alignés qui donnent le résultat du jeton&nbsp;: une multiplication, puis une addition ou une soustraction.</p>
+</header>
+
+<div id="scorebar">
+  <span>Jetons gagnés&nbsp;: <b id="gagnes">0</b> / 10</span>
+  <span>Pioche&nbsp;: <span id="pioche">50</span></span>
+  <span>Écartés&nbsp;: <span id="ecartes">0</span></span>
+</div>
+
+<div id="plateau">
+  <div id="grille"></div>
+
+  <div id="zone-jeton">
+    <div class="boutons" id="actions">
+      <button class="action" id="btn-piocher">🎲 Retourner un jeton</button>
+    </div>
+    <p id="chrono" hidden></p>
+    <p id="message"></p>
+  </div>
+
+  <div class="boutons">
+    <button class="action secondaire" id="btn-nouvelle">🔄 Nouvelle partie</button>
+  </div>
+
+  <div id="regles">
+    <h2>Règles</h2>
+    Les 49 pions (nombres de 1 à 9) forment un grand carré de 7×7, disposés au hasard.
+    On retourne un jeton «&nbsp;résultat&nbsp;» : sois le premier à repérer un TRIO — 3 nombres
+    <b>alignés côte à côte</b> (horizontal, vertical ou diagonal) qui, avec une multiplication
+    et une addition — ou une multiplication et une soustraction, donnent la valeur du jeton.
+    Le jeton est gagné&nbsp;! Après 5 minutes sans TRIO trouvé, le jeton est écarté.
+    Le premier joueur à 10 jetons a gagné&nbsp;!
+    <details>
+      <summary>Exemple</summary>
+      <p style="margin:6px 0 0">Jeton <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;!</p>
+    </details>
+  </div>
+</div>
+
+<a class="retour" href="../">← Retour aux applis</a>
+
+<script>
+(function () {
+  var TAILLE = 7, NOMBRES = 9, JETONS_PIOCHE = 50, VICTOIRE = 10, DELAI = 300;
+  var PAS = [];
+  for (var dl = -1; dl <= 1; dl++) for (var dc = -1; dc <= 1; dc++)
+    if (dl !== 0 || dc !== 0) PAS.push([dl, dc]);
+
+  var grille, pioche, jeton, gagnes, ecartes, fini;
+  var debut, chronoTimer = null;
+  var selection = [];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var grilleEl = $('grille'), messageEl = $('message'), chronoEl = $('chrono');
+  var actionsEl = $('actions');
+
+  function alea(n) { return Math.floor(Math.random() * n); }
+
+  function nouvellePartie() {
+    var pions = [];
+    for (var v = 1; v <= NOMBRES; v++) for (var i = 0; i < 5; i++) pions.push(v);
+    while (pions.length < TAILLE * TAILLE) pions.push(1 + alea(NOMBRES));
+    for (var j = pions.length - 1; j > 0; j--) {
+      var k = alea(j + 1), t = pions[j]; pions[j] = pions[k]; pions[k] = t;
+    }
+    grille = [];
+    for (var l = 0; l < TAILLE; l++) grille.push(pions.slice(l * TAILLE, (l + 1) * TAILLE));
+    pioche = [];
+    while (pioche.length < JETONS_PIOCHE) {
+      for (var w = 1; w <= NOMBRES && pioche.length < JETONS_PIOCHE; w++) pioche.push(w);
+    }
+    for (var p = pioche.length - 1; p > 0; p--) {
+      var q = alea(p + 1), u = pioche[p]; pioche[p] = pioche[q]; pioche[q] = u;
+    }
+    jeton = null; gagnes = 0; ecartes = 0; fini = false;
+    selection = [];
+    dessinerGrille();
+    message('', null);
+    majScore();
+    majActions();
+    arreterChrono();
+  }
+
+  function dessinerGrille() {
+    grilleEl.innerHTML = '';
+    grille.forEach(function (ligne, l) {
+      var div = document.createElement('div');
+      div.className = 'ligne';
+      ligne.forEach(function (valeur, c) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'pion';
+        b.textContent = valeur;
+        b.dataset.l = l; b.dataset.c = c;
+        b.addEventListener('click', function () { choisir(b, l, c); });
+        div.appendChild(b);
+      });
+      grilleEl.appendChild(div);
+    });
+  }
+
+  function choisir(btn, l, c) {
+    if (jeton === null || fini) return;
+    var idx = selection.findIndex(function (s) { return s.l === l && s.c === c; });
+    if (idx >= 0) {
+      selection.splice(idx, 1);
+      btn.classList.remove('actif');
+    } else {
+      if (selection.length >= 3) {
+        var ancien = selection.shift();
+        var precedent = grilleEl.querySelector('.pion[data-l="' + ancien.l + '"][data-c="' + ancien.c + '"]');
+        if (precedent) precedent.classList.remove('actif');
+      }
+      selection.push({ l: l, c: c });
+      btn.classList.add('actif');
+    }
+  }
+
+  function alignes(cases) {
+    var ensemble = new Set(cases.map(function (s) { return s.l + ',' + s.c; }));
+    if (ensemble.size < 3) return false;
+    for (var i = 0; i < cases.length; i++) {
+      var l = cases[i].l, c = cases[i].c;
+      if (l < 0 || l >= TAILLE || c < 0 || c >= TAILLE) return false;
+    }
+    for (var i = 0; i < cases.length; i++) {
+      var l = cases[i].l, c = cases[i].c;
+      for (var p = 0; p < PAS.length; p++) {
+        var dl = PAS[p][0], dc = PAS[p][1];
+        var trio = new Set([l + ',' + c, (l + dl) + ',' + (c + dc), (l + 2 * dl) + ',' + (c + 2 * dc)]);
+        var ok = true;
+        ensemble.forEach(function (s) { if (!trio.has(s)) ok = false; });
+        if (ok && trio.size === 3) return true;
+      }
+    }
+    return false;
+  }
+
+  function formules(a, b, c, cible) {
+    var f = [];
+    if (a * b + c === cible) f.push(a + ' × ' + b + ' + ' + c + ' = ' + cible);
+    if (a * b - c === cible) f.push(a + ' × ' + b + ' − ' + c + ' = ' + cible);
+    if (a * c + b === cible) f.push(a + ' × ' + c + ' + ' + b + ' = ' + cible);
+    if (a * c - b === cible) f.push(a + ' × ' + c + ' − ' + b + ' = ' + cible);
+    if (b * c + a === cible) f.push(b + ' × ' + c + ' + ' + a + ' = ' + cible);
+    if (b * c - a === cible) f.push(b + ' × ' + c + ' − ' + a + ' = ' + cible);
+    return f;
+  }
+
+  function piocher() {
+    if (fini || pioche.length === 0) return;
+    jeton = pioche.pop();
+    selection = [];
+    dessinerGrille();
+    message('', null);
+    majScore();
+    majActions();
+    lancerChrono();
+  }
+
+  function valider() {
+    if (jeton === null || fini) return;
+    if (selection.length < 3) { message('Sélectionne trois pions en tapant dessus.', 'ko'); return; }
+    if (!alignes(selection)) { message('Les trois pions ne sont pas alignés côte à côte.', 'ko'); return; }
+    var a = grille[selection[0].l][selection[0].c];
+    var b = grille[selection[1].l][selection[1].c];
+    var c = grille[selection[2].l][selection[2].c];
+    var f = formules(a, b, c, jeton);
+    if (f.length === 0) {
+      message(a + ', ' + b + ', ' + c + ' ne permettent pas d’obtenir ' + jeton + '.', 'ko');
+      return;
+    }
+    gagnes++;
+    var msg = 'TRIO gagné ! ' + f.join(' ; ');
+    jeton = null;
+    arreterChrono();
+    if (gagnes >= VICTOIRE) { fini = true; msg += ' — victoire !'; }
+    else if (pioche.length === 0) { fini = true; msg += ' — pioche épuisée !'; }
+    message(msg, 'ok');
+    selection = [];
+    dessinerGrille();
+    majScore();
+    majActions();
+  }
+
+  function ecarter() {
+    if (jeton === null || fini) return;
+    ecartes++;
+    jeton = null;
+    arreterChrono();
+    message('Jeton écarté.', 'ko');
+    selection = [];
+    dessinerGrille();
+    if (pioche.length === 0) fini = true;
+    majScore();
+    majActions();
+  }
+
+  function lancerChrono() {
+    arreterChrono();
+    debut = Math.floor(Date.now() / 1000);
+    chronoEl.hidden = false;
+    var maj = function () {
+      var reste = debut + DELAI - Math.floor(Date.now() / 1000);
+      chronoEl.textContent = reste > 0
+        ? '⏱ Temps restant : ' + reste + ' s'
+        : 'Temps écoulé : écarte le jeton si personne ne trouve.';
+    };
+    maj();
+    chronoTimer = setInterval(maj, 1000);
+  }
+  function arreterChrono() {
+    if (chronoTimer) clearInterval(chronoTimer);
+    chronoTimer = null;
+    chronoEl.hidden = true;
+  }
+
+  function message(txt, type) {
+    messageEl.textContent = txt;
+    messageEl.className = type ? type : '';
+  }
+
+  function majScore() {
+    $('gagnes').textContent = gagnes;
+    $('pioche').textContent = pioche.length;
+    $('ecartes').textContent = ecartes;
+  }
+
+  function majActions() {
+    actionsEl.innerHTML = '';
+    if (jeton !== null && !fini) {
+      var jetonAff = document.createElement('span');
+      jetonAff.id = 'jeton-affiche';
+      jetonAff.textContent = jeton;
+      actionsEl.appendChild(jetonAff);
+
+      var bv = document.createElement('button');
+      bv.className = 'action';
+      bv.textContent = '✔ Valider mon TRIO';
+      bv.addEventListener('click', valider);
+      actionsEl.appendChild(bv);
+
+      var be = document.createElement('button');
+      be.className = 'action secondaire';
+      be.textContent = 'Aucun TRIO — écarter';
+      be.addEventListener('click', ecarter);
+      actionsEl.appendChild(be);
+    } else if (!fini) {
+      var bp = document.createElement('button');
+      bp.className = 'action';
+      bp.textContent = '🎲 Retourner un jeton';
+      bp.disabled = pioche.length === 0;
+      bp.addEventListener('click', piocher);
+      actionsEl.appendChild(bp);
+    } else {
+      var fin = document.createElement('p');
+      fin.style.margin = '0';
+      fin.style.fontWeight = '600';
+      fin.style.color = '#065f46';
+      fin.textContent = 'Partie terminée ! ' + gagnes + ' jeton' + (gagnes !== 1 ? 's' : '') + ' gagné' + (gagnes !== 1 ? 's' : '') + (gagnes >= VICTOIRE ? ' — victoire !' : '.');
+      actionsEl.appendChild(fin);
+    }
+  }
+
+  $('btn-nouvelle').addEventListener('click', nouvellePartie);
+  nouvellePartie();
+})();
+</script>
+</body>
+</html>
