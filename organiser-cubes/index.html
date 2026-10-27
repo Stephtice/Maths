@@ -359,8 +359,8 @@ function computeOrganisedLayout() {
     if (u) {
       // largeur des constellations de dés (grille 3×3 par tranche de 5)
       const nbDice = Math.ceil(u / 5);
-      // constellation serrée : largeur d'un dé = 2,6 cubes + écart de rangée
-      const diceW = 2.6 + gap;
+      // constellation aérée : largeur d'un dé = 4 cubes + écart de rangée
+      const diceW = 4 + gap;
       remW += (h || t ? gap : 0) + nbDice * diceW + (nbDice - 1) * gap;
     }
     const widthUnits = Math.max(blocksW, remW);
@@ -462,11 +462,11 @@ function computeOrganisedLayout() {
       4: [[0, 0], [0, 2], [2, 0], [2, 2]],
       5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
     };
-    // grille 3×3 d'un dé, cellule serrée : points extrêmes (colonnes 0 et 2)
-    // séparés de 2×cell ; espace libre entre 2 cubes = 2×cell − s = 0,6 cube
-    const cell = s * 0.8;
-    const diceW = cell * 2 + s;   // largeur d'une constellation = 2,6 cubes
-    const diceH = cell * 2 + s;   // hauteur d'une constellation = 2,6 cubes
+    // grille 3×3 d'un dé : points extrêmes (colonnes 0 et 2) séparés de 2×cell ;
+    // espace libre entre 2 cubes = 2×cell − s = 2 cubes exactement
+    const cell = s * 1.5;
+    const diceW = cell * 2 + s;   // largeur d'une constellation = 4 cubes
+    const diceH = cell * 2 + s;   // hauteur d'une constellation = 4 cubes
     const unitsStartX = rx;       // début réel de la zone des unités
     let remaining = u;
     while (remaining > 0) {
