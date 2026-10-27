@@ -92,7 +92,8 @@ let N = 0;
 let scatterX, scatterY;     // positions dispersées (px)
 let targetX, targetY;       // positions organisées (px)
 let cubeGroup = null;       // index de groupe par cube (-1 = unité seule)
-let cubeS = 4;
+let cubeS = 4;               // taille courante d'un cube (px, phase organisée)
+let scatterS = 4;            // taille des cubes à la dispersion (px, pour l'effacement)
 
 let state = "idle";         // idle | scatter | organizing | done
 let firstEstimate = null;
@@ -241,6 +242,7 @@ function buildScatter() {
   let s = Math.sqrt((W * H * 0.72) / (Math.max(N, 1) * cellFactor * cellFactor));
   s = Math.max(1.5, Math.min(22, s));
   cubeS = s;
+  scatterS = s;
 
   const cell = s * cellFactor;
   // Lignes de 10 cubes (facilite le comptage par dizaines),
@@ -562,10 +564,14 @@ function drawOrganizing(now) {
   const launchTarget = Math.min(N, (waveIdx + 1) * a.waveSize);
 
   if (launchTarget > a.launchedUpTo) {
-    const s = cubeS;
+    // efface avec la plus GRANDE des deux tailles (dispersée vs organisée)
+    // + une marge : le cube dessiné en vol peut être agrandi (×1,35) et
+    // son relief/stroke déborde du carré de base
+    const s = Math.max(scatterS, cubeS);
+    const m = Math.ceil(s * 0.35) + 2;
     scatterCtx.fillStyle = BG;
     for (let i = a.launchedUpTo; i < launchTarget; i++) {
-      scatterCtx.fillRect(scatterX[i] - 0.5, scatterY[i] - 0.5, s + 1, s + 1);
+      scatterCtx.fillRect(scatterX[i] - m, scatterY[i] - m, s + m * 2, s + m * 2);
     }
     a.launchedUpTo = launchTarget;
   }
