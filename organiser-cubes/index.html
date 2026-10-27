@@ -355,7 +355,11 @@ function computeOrganisedLayout() {
     const blocksW = th ? bpr * (10 + d3) + (bpr - 1) * gap : 0;
     let remW = 0;
     if (h) remW += h * 10 + (h - 1) * gap;
-    if (t) remW += (h ? gap : 0) + t * 10 + (t - 1) * gap;
+    if (t) {
+      // dizaines empilées par colonnes de 5 : largeur = nombre de colonnes
+      const tenCols = Math.ceil(t / 5);
+      remW += (h ? gap : 0) + tenCols * 10 + (tenCols - 1) * gap;
+    }
     if (u) {
       // largeur des constellations de dés (grille 3×3 par tranche de 5)
       const nbDice = Math.ceil(u / 5);
@@ -437,21 +441,29 @@ function computeOrganisedLayout() {
     });
     rx += 10 * s + g;
   }
+  // Dizaines : réglettes empilées par colonnes de 5 maximum.
+  // Après 5 réglettes superposées, une nouvelle colonne démarre à droite.
   for (let b = 0; b < t; b++) {
     const gIdx = groups.length;
+    const col = Math.floor(b / 5);      // colonne courante
+    const row = b % 5;                  // rangée dans la colonne (0 = en haut... on empile vers le haut)
+    const bx = rx + col * (10 * s + g);
+    const by = baseY - (row + 1) * s - row * g;
     for (let xx = 0; xx < 10; xx++) {
-      positions.x[idx] = rx + xx * s;
-      positions.y[idx] = baseY - s;
+      positions.x[idx] = bx + xx * s;
+      positions.y[idx] = by;
       cubeGroup[idx] = gIdx;
       idx++;
     }
     groups.push({
       kind: "ten",
-      x: rx, y: baseY - s, w: 10 * s, h: s,
+      x: bx, y: by, w: 10 * s, h: s,
       label: "10", strong: false, lastIdx: idx - 1, drawn: false,
     });
-    rx += 10 * s + g;
   }
+  // avance rx après la dernière colonne de dizaines
+  const tenCols = Math.ceil(t / 5);
+  if (t) rx += tenCols * 10 * s + (tenCols - 1) * g + g;
   // Unités : disposition en « constellation de dés » jusqu'à 5, puis en
   // constellations côte à côte au-delà (6 = 5+1, 7 = 5+2, 8 = 5+3, 9 = 5+4)
   if (u) {
