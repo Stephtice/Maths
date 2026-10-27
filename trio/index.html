@@ -9,6 +9,29 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; min-height: 100%; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; color: #5b4636; }
   body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
+
+  #regles-haut {
+    position: fixed; top: 10px; left: 10px; z-index: 30;
+    max-width: 280px; max-height: 80vh; overflow-y: auto;
+    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    padding: 12px 14px; font-size: .8rem; line-height: 1.45;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  }
+  #regles-haut h2 { margin: 0 0 6px; color: #7f4f24; font-size: .95rem; }
+  #regles-haut details summary { cursor: pointer; color: #e76f51; font-weight: 600; margin-top: 6px; }
+  #regles-haut .fermer-regles {
+    display: block; margin-top: 8px; width: 100%; padding: 6px 0;
+    border: none; border-radius: 8px; background: #f7c948; color: #5b4636;
+    font-weight: 700; cursor: pointer;
+  }
+  #regles-haut[hidden] { display: none; }
+  #btn-regles {
+    position: fixed; top: 10px; left: 10px; z-index: 31;
+    padding: 6px 12px; border: 2px solid #e0c9a6; border-radius: 999px;
+    background: #fffdf8; color: #7f4f24; font-size: .85rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  }
+
   header { text-align: center; margin-bottom: 10px; }
   h1 { margin: 0; color: #7f4f24; font-size: 1.6rem; }
   header p { margin: 6px 0 0; font-size: .95rem; }
@@ -22,12 +45,17 @@
   #plateau {
     background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
     padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
-    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 640px;
+    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 720px;
   }
 
   #zone-jeu {
     display: flex; flex-wrap: wrap; gap: 18px;
-    align-items: center; justify-content: center; width: 100%;
+    align-items: flex-start; justify-content: center; width: 100%;
+  }
+
+  #grille-wrap { position: relative; }
+  #ellipse-trio {
+    position: absolute; pointer-events: none; z-index: 5;
   }
 
   #grille { display: flex; flex-direction: column; gap: 6px; }
@@ -42,7 +70,7 @@
 
   #cote {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
-    min-width: 130px;
+    min-width: 130px; padding-top: 8px;
   }
   #expression {
     min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: #7f4f24;
@@ -71,13 +99,25 @@
     min-height: 2.6em;
   }
 
-  #zone-cible { text-align: center; margin-top: 14px; width: 100%; }
-  #jeton-affiche {
-    display: inline-block; width: 54px; height: 54px; line-height: 54px;
-    border-radius: 50%; background: #fee2e2; color: #b91c1c;
-    font-size: 1.5rem; font-weight: 700; vertical-align: middle;
+  #zone-cible {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    min-width: 130px; padding-top: 8px;
   }
-  #chrono { margin: 8px 0 0; font-size: .9rem; color: #b0a08a; }
+  #cible-grosse {
+    width: 110px; height: 110px; border-radius: 50%;
+    border: 5px dashed #e76f51;
+    background: #fee2e2; color: #b91c1c;
+    font-size: 3.2rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #cible-grosse.vide {
+    background: #f9f4e8; color: #b0a08a; border-style: solid;
+    font-size: 2.2rem;
+  }
+  #etiquette-cible {
+    font-size: .9rem; font-weight: 700; color: #7f4f24;
+  }
+  #chrono { margin: 0; font-size: .85rem; color: #b0a08a; text-align: center; }
 
   .boutons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
   button.action {
@@ -111,14 +151,6 @@
   }
   #trios .vide { font-size: .85rem; color: #b0a08a; margin: 0; }
 
-  #regles {
-    margin-top: 16px; width: 100%;
-    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px; padding: 14px 16px;
-    font-size: .88rem; line-height: 1.5;
-  }
-  #regles h2 { margin: 0 0 8px; color: #7f4f24; font-size: 1.05rem; }
-  #regles details summary { cursor: pointer; color: #e76f51; font-weight: 600; margin-top: 8px; }
-
   a.retour { margin-top: 16px; font-size: .9rem; color: #b0a08a; }
 
   @media (max-width: 400px) {
@@ -127,19 +159,36 @@
 </style>
 </head>
 <body>
+<button type="button" id="btn-regles" hidden>📖 Règles</button>
+<div id="regles-haut">
+  <h2>Règles</h2>
+  Les 49 pions (nombres de 1 à 9, six couleurs comme dans le jeu) forment un grand carré de 7×7, disposés au hasard.
+  Une cible «&nbsp;résultat&nbsp;» est retournée&nbsp;: trouve tous les TRIO que tu peux — 3 nombres
+  <b>alignés côte à côte</b> (horizontal, vertical ou diagonal) qui, avec une multiplication
+  et une addition — ou une multiplication et une soustraction, donnent la valeur de la cible.
+  Chaque TRIO validé est conservé dans le bandeau «&nbsp;TRIOs trouvés&nbsp;».
+  La grille et la cible ne changent que lors du clic sur <b>Nouvelle partie</b>.
+  <details>
+    <summary>Exemple</summary>
+    <p style="margin:6px 0 0">Cible <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: clique 3, choisis <b>×</b>, clique 5 → le résultat 15 apparaît à côté. Clique sur <b>15</b>, choisis <b>−</b>, clique 1&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;! Cherche-en d'autres pour la même cible.</p>
+  </details>
+  <button type="button" class="fermer-regles">✕ Fermer</button>
+</div>
 <header>
   <h1>TRIO — jeu de calcul mental</h1>
   <p>Cherche un maximum de TRIO pour la même cible&nbsp;! La grille et la cible ne changent que quand tu lances une nouvelle partie.</p>
 </header>
 
 <div id="scorebar">
-  <span>Cible&nbsp;: <b id="cible-affichee">—</b></span>
   <span>TRIOs trouvés&nbsp;: <b id="gagnes">0</b></span>
 </div>
 
 <div id="plateau">
   <div id="zone-jeu">
-    <div id="grille"></div>
+    <div id="grille-wrap">
+      <svg id="ellipse-trio" hidden></svg>
+      <div id="grille"></div>
+    </div>
     <div id="cote">
       <div id="expression"></div>
       <button type="button" id="chip-resultat" hidden></button>
@@ -150,15 +199,15 @@
       </div>
       <p id="consigne"></p>
     </div>
+    <div id="zone-cible">
+      <p id="etiquette-cible">Cible</p>
+      <div id="cible-grosse" class="vide">—</div>
+      <div class="boutons" id="actions"></div>
+      <p id="chrono" hidden></p>
+    </div>
   </div>
 
-  <div id="zone-cible">
-    <div class="boutons" id="actions">
-      <button class="action" id="btn-cible">🎲 Retourner une cible</button>
-    </div>
-    <p id="chrono" hidden></p>
-    <p id="message"></p>
-  </div>
+  <p id="message"></p>
 
   <div id="trios">
     <h2>TRIOs trouvés</h2>
@@ -167,20 +216,6 @@
 
   <div class="boutons">
     <button class="action secondaire" id="btn-nouvelle">🔄 Nouvelle partie</button>
-  </div>
-
-  <div id="regles">
-    <h2>Règles</h2>
-    Les 49 pions (nombres de 1 à 9, six couleurs comme dans le jeu) forment un grand carré de 7×7, disposés au hasard.
-    Une cible «&nbsp;résultat&nbsp;» est retournée&nbsp;: trouve tous les TRIO que tu peux — 3 nombres
-    <b>alignés côte à côte</b> (horizontal, vertical ou diagonal) qui, avec une multiplication
-    et une addition — ou une multiplication et une soustraction, donnent la valeur de la cible.
-    Chaque TRIO validé est conservé dans le bandeau «&nbsp;TRIOs trouvés&nbsp;».
-    La grille et la cible ne changent que lors du clic sur <b>Nouvelle partie</b>.
-    <details>
-      <summary>Exemple</summary>
-      <p style="margin:6px 0 0">Cible <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: clique 3, choisis <b>×</b>, clique 5 → le résultat 15 apparaît à côté. Clique sur <b>15</b>, choisis <b>−</b>, clique 1&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;! Cherche-en d'autres pour la même cible.</p>
-    </details>
   </div>
 </div>
 
@@ -216,7 +251,7 @@
   var SIGNES = { '+': '+', '-': '−', '*': '×' };
 
   var grille, pioche, cible, gagnes, trios;
-  var debut, chronoTimer = null;
+  var debut, chronoTimer = null, ellipseTimer = null;
   var etape, pion1, signe1, pion2, signe2;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -224,6 +259,16 @@
   var actionsEl = $('actions'), exprEl = $('expression');
   var chipEl = $('chip-resultat'), opsEl = $('ops'), consigneEl = $('consigne');
   var listeTriosEl = $('liste-trios');
+  var reglesHautEl = $('regles-haut'), btnReglesEl = $('btn-regles');
+
+  btnReglesEl.addEventListener('click', function () {
+    reglesHautEl.hidden = false;
+    btnReglesEl.hidden = true;
+  });
+  reglesHautEl.querySelector('.fermer-regles').addEventListener('click', function () {
+    reglesHautEl.hidden = true;
+    btnReglesEl.hidden = false;
+  });
 
   function alea(n) { return Math.floor(Math.random() * n); }
 
@@ -366,10 +411,53 @@
       gagnes++;
       trios.push(expr);
       message('TRIO gagné ! ' + expr + ' = ' + cible + '. Cherche-en un autre !', 'ok');
+      tracerEllipse([pion1, pion2, { l: l, c: c }]);
       majTrios();
       reinitialiserCalcul();
       majScore();
     }
+  }
+
+  function tracerEllipse(cases) {
+    var svg = $('ellipse-trio');
+    var pions = grilleEl.querySelectorAll('button.pion');
+    var coords = [];
+    for (var i = 0; i < pions.length; i++) {
+      var b = pions[i];
+      for (var j = 0; j < cases.length; j++) {
+        if (+b.dataset.l === cases[j].l && +b.dataset.c === cases[j].c) {
+          coords.push({ x: b.offsetLeft, y: b.offsetTop, w: b.offsetWidth, h: b.offsetHeight });
+        }
+      }
+    }
+    if (coords.length !== 3) return;
+    var minX = Math.min.apply(null, coords.map(function (p) { return p.x; }));
+    var minY = Math.min.apply(null, coords.map(function (p) { return p.y; }));
+    var maxX = Math.max.apply(null, coords.map(function (p) { return p.x + p.w; }));
+    var maxY = Math.max.apply(null, coords.map(function (p) { return p.y + p.h; }));
+    var marge = 14;
+    var x = minX - marge, y = minY - marge;
+    var w = (maxX - minX) + 2 * marge, h = (maxY - minY) + 2 * marge;
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.style.left = x + 'px';
+    svg.style.top = y + 'px';
+    svg.innerHTML = '';
+    var ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    ellipse.setAttribute('cx', w / 2);
+    ellipse.setAttribute('cy', h / 2);
+    ellipse.setAttribute('rx', (w / 2) - 4);
+    ellipse.setAttribute('ry', (h / 2) - 4);
+    ellipse.setAttribute('fill', 'none');
+    ellipse.setAttribute('stroke', '#e76f51');
+    ellipse.setAttribute('stroke-width', '5');
+    ellipse.setAttribute('stroke-dasharray', '14 8');
+    ellipse.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(ellipse);
+    svg.hidden = false;
+    if (ellipseTimer) clearTimeout(ellipseTimer);
+    ellipseTimer = setTimeout(function () { svg.hidden = true; }, 2500);
   }
 
   function choisirOp(op) {
@@ -451,7 +539,14 @@
   }
 
   function majScore() {
-    $('cible-affichee').textContent = cible !== null ? cible : '—';
+    var grosse = $('cible-grosse');
+    if (cible !== null) {
+      grosse.textContent = cible;
+      grosse.classList.remove('vide');
+    } else {
+      grosse.textContent = '—';
+      grosse.classList.add('vide');
+    }
     $('gagnes').textContent = gagnes;
   }
 
@@ -474,18 +569,13 @@
 
   function majActions() {
     actionsEl.innerHTML = '';
-    if (cible !== null) {
-      var aff = document.createElement('span');
-      aff.id = 'jeton-affiche';
-      aff.textContent = cible;
-      actionsEl.appendChild(aff);
-    } else if (pioche.length > 0) {
+    if (cible === null && pioche.length > 0) {
       var bc = document.createElement('button');
       bc.className = 'action';
       bc.textContent = '🎲 Retourner une cible';
       bc.addEventListener('click', retournerCible);
       actionsEl.appendChild(bc);
-    } else {
+    } else if (cible === null) {
       var fin = document.createElement('p');
       fin.style.margin = '0';
       fin.style.fontWeight = '600';
