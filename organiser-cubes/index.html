@@ -61,6 +61,7 @@
   <label id="askLabel"></label>
   <input id="askInput" type="number" min="0" inputmode="numeric" value="">
   <button id="askGo">Valider</button>
+  <button id="askSkip" style="background:#b0a08a;">Passer</button>
 </div>
 <div id="modal" class="overlay hidden">
   <div class="panel" id="panelContent"></div>
@@ -77,10 +78,10 @@ window.addEventListener('error', function (e) {
 });
 
 const BG = "#fdf6ec";
-const CUBE = "#f0a04b";
-const CUBE_DARK = "#c97a2b";
-const CUBE_LIGHT = "#ffd9a0";
-const STROKE = "rgba(90, 50, 10, 0.45)";
+const CUBE = "#f7c948";
+const CUBE_DARK = "#d9a520";
+const CUBE_LIGHT = "#ffe9a0";
+const STROKE = "rgba(120, 80, 10, 0.45)";
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
@@ -324,6 +325,17 @@ function askEstimate(step) {
     } else {
       askbar.classList.add("hidden");
       showFinalFeedback(v);
+    }
+  };
+  // bouton « Passer » : continue sans réponse
+  askSkip.onclick = () => {
+    askbar.classList.add("hidden");
+    if (step === 1) {
+      firstEstimate = null;
+      statusBox.innerHTML = "Estimation passée. Les cubes se rangent par dizaines, centaines puis milliers…";
+      startOrganise();
+    } else {
+      showFinalFeedback(null);
     }
   };
 }
@@ -729,18 +741,27 @@ function finishOrganise() {
 
 // ---------- Résultat ----------
 function showFinalFeedback(v) {
-  const good = v === N;
-  const diff = v - N;
+  const passed = v === null || v === undefined;
+  const good = !passed && v === N;
+  const diff = passed ? 0 : v - N;
+  const reponseHTML = passed
+    ? `<p>Réponse passée.</p>`
+    : `<p>Ta réponse après organisation&nbsp;: <span class="big">${fmt(v)}</span></p>
+       <p>${good
+         ? `C'est exactement le bon nombre&nbsp;! Il y a bien <b>${fmt(N)}</b> cubes.`
+         : `Il y a en réalité <b>${fmt(N)}</b> cubes, soit ${diff > 0 ? `${fmt(diff)} de moins que ta réponse` : `${fmt(-diff)} de plus que ta réponse`}.`}</p>`;
+  const estimHTML = firstEstimate === null
+    ? `<p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
+         Pas d'estimation notée avant l'organisation.
+       </p>`
+    : `<p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
+         Ton estimation <b>avant</b> l'organisation était&nbsp;: <b>${fmt(firstEstimate)}</b>
+         (${firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
+       </p>`;
   panelContent.innerHTML = `
-    <h2>${good ? "🎉 Bonne réponse&nbsp;!" : "Pas tout à fait…"}</h2>
-    <p>Ta réponse après organisation&nbsp;: <span class="big">${fmt(v)}</span></p>
-    <p>${good
-      ? `C'est exactement le bon nombre&nbsp;! Il y a bien <b>${fmt(N)}</b> cubes.`
-      : `Il y a en réalité <b>${fmt(N)}</b> cubes, soit ${diff > 0 ? `${fmt(diff)} de moins que ta réponse` : `${fmt(-diff)} de plus que ta réponse`}.`}</p>
-    <p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
-      Ton estimation <b>avant</b> l'organisation était&nbsp;: <b>${fmt(firstEstimate)}</b>
-      (${firstEstimate === null ? "non notée" : firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
-    </p>
+    <h2>${passed ? "Réponse passée" : good ? "🎉 Bonne réponse&nbsp;!" : "Pas tout à fait…"}</h2>
+    ${reponseHTML}
+    ${estimHTML}
     <p>${breakdownText()} — on lit la quantité dans les groupes, sans compter les cubes un par un.</p>
     <button id="restartBtn">Recommencer</button>
   `;
