@@ -171,7 +171,13 @@ function buildScatter() {
   cubeS = s;
 
   const cell = s * cellFactor;
-  const cols = Math.max(1, Math.floor((W * 0.94) / cell));
+  // Lignes de 10 cubes (facilite le comptage par dizaines),
+  // avec un décalage aléatoire pour garder l'aspect « en vrac »
+  const perLine = 10;
+  const maxCols = Math.max(1, Math.floor((W * 0.94) / cell));
+  const lineBlocks = Math.max(1, Math.floor(maxCols / perLine));
+  // plusieurs blocs de 10 côte à côte par ligne physique
+  const cols = Math.min(maxCols, lineBlocks * perLine);
   const rows = Math.max(1, Math.ceil(N / cols));
   const offX = (W - Math.min(cols * cell, W)) / 2;
   const offY = (H - Math.min(rows * cell, H)) / 2;
@@ -179,16 +185,11 @@ function buildScatter() {
   scatterX = new Float32Array(N);
   scatterY = new Float32Array(N);
 
-  const order = new Int32Array(N);
-  for (let i = 0; i < N; i++) order[i] = i;
-  for (let i = N - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const t = order[i]; order[i] = order[j]; order[j] = t;
-  }
   const jit = Math.max(0, (cell - s) * 0.5);
   for (let i = 0; i < N; i++) {
-    const c = order[i] % cols;
-    const r = Math.floor(order[i] / cols);
+    // position dans la ligne : 0..9 puis nouvelle ligne de 10
+    const c = i % cols;
+    const r = Math.floor(i / cols);
     scatterX[i] = offX + c * cell + jit * (Math.random() * 2 - 1);
     scatterY[i] = offY + r * cell + jit * (Math.random() * 2 - 1);
   }
