@@ -52,6 +52,7 @@
     display: flex; flex-wrap: wrap; gap: 18px;
     align-items: flex-start; justify-content: center; width: 100%;
   }
+  #zone-jeu > #cote { flex: 0 0 auto; }
 
   #grille-wrap { position: relative; }
   #ellipse-trio {
@@ -101,7 +102,7 @@
 
   #zone-cible {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
-    min-width: 130px; padding-top: 8px;
+    margin-top: 14px;
   }
   #cible-grosse {
     width: 110px; height: 110px; border-radius: 50%;
@@ -198,12 +199,12 @@
         <button type="button" class="op" data-op="*">×</button>
       </div>
       <p id="consigne"></p>
-    </div>
-    <div id="zone-cible">
-      <p id="etiquette-cible">Cible</p>
-      <div id="cible-grosse" class="vide">—</div>
-      <div class="boutons" id="actions"></div>
-      <p id="chrono" hidden></p>
+      <div id="zone-cible">
+        <p id="etiquette-cible">Cible</p>
+        <div id="cible-grosse" class="vide">—</div>
+        <div class="boutons" id="actions"></div>
+        <p id="chrono" hidden></p>
+      </div>
     </div>
   </div>
 
