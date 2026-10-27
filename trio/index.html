@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TRIO — jeu de calcul mental</title>
-<!-- Règles : 49 pions en carré 7×7 (couleurs et nombres du fichier Cartes Trio) ; une cible est retournée, trouver un maximum de TRIO — 3 nombres alignés côte à côte qui donnent la cible avec une multiplication et une addition — ou une soustraction. La grille et la cible ne changent que lors du clic sur « Nouvelle partie ». -->
+<!-- Règles : 49 pions en carré 7×7 (couleurs et nombres du fichier Cartes Trio) ; une cible entre 1 et 50 est retournée (cibles ≥ 10 deux fois plus probables que les cibles < 10), trouver un maximum de TRIO — 3 nombres alignés côte à côte qui donnent la cible avec une multiplication et une addition — ou une soustraction. La grille et la cible ne changent que lors du clic sur « Nouvelle partie ». -->
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; min-height: 100%; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; color: #5b4636; }
@@ -163,7 +163,7 @@
 <div id="regles-haut">
   <h2>Règles</h2>
   Les 49 pions (nombres de 1 à 9, six couleurs comme dans le jeu) forment un grand carré de 7×7, disposés au hasard.
-  Une cible «&nbsp;résultat&nbsp;» est retournée&nbsp;: trouve tous les TRIO que tu peux — 3 nombres
+  Une cible «&nbsp;résultat&nbsp;» entre 1 et 50 est retournée&nbsp;: trouve tous les TRIO que tu peux — 3 nombres
   <b>alignés côte à côte</b> (horizontal, vertical ou diagonal) qui, avec une multiplication
   et une addition — ou une multiplication et une soustraction, donnent la valeur de la cible.
   Chaque TRIO validé est conservé dans le bandeau «&nbsp;TRIOs trouvés&nbsp;».
@@ -274,6 +274,11 @@
 
   function calc(a, s, b) { return s === '+' ? a + b : s === '-' ? a - b : a * b; }
 
+  function tirerCible() {
+    if (alea(3) === 0) return 1 + alea(9);
+    return 10 + alea(41);
+  }
+
   function nouvellePartie() {
     var pions = PIONS_MODELE.slice();
     for (var j = pions.length - 1; j > 0; j--) {
@@ -282,14 +287,8 @@
     grille = [];
     for (var l = 0; l < TAILLE; l++) grille.push(pions.slice(l * TAILLE, (l + 1) * TAILLE));
     pioche = [];
-    var nombres = [];
-    for (var n = 1; n <= 9; n++) {
-      for (var c = 0; c < PIONS_MODELE.filter(function (p) { return p.num === n; }).length; c++) {
-        nombres.push(n);
-      }
-    }
     while (pioche.length < JETONS_PIOCHE) {
-      for (var w = 0; w < nombres.length && pioche.length < JETONS_PIOCHE; w++) pioche.push(nombres[w]);
+      pioche.push(tirerCible());
     }
     for (var p = pioche.length - 1; p > 0; p--) {
       var q = alea(p + 1), u = pioche[p]; pioche[p] = pioche[q]; pioche[q] = u;
