@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maths — Applis pour la classe</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: #fdf6ec;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: #5b4636;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px;
+  }
+  header { text-align: center; margin-bottom: 36px; }
+  h1 {
+    margin: 0; color: #7f4f24; font-size: 2rem;
+  }
+  header p { margin: 10px 0 0; font-size: 1.05rem; }
+  .grid {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    justify-content: center; max-width: 900px; width: 100%;
+  }
+  a.card {
+    display: block; text-decoration: none;
+    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    padding: 26px 30px; width: 340px; max-width: 100%;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  a.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.14);
+    border-color: #e76f51;
+  }
+  .card h2 { margin: 0 0 8px; color: #e76f51; font-size: 1.25rem; }
+  .card p { margin: 0; line-height: 1.45; font-size: 0.95rem; }
+  .card .tags { margin-top: 14px; }
+  .tag {
+    display: inline-block; background: #f7c94833; color: #7f4f24;
+    border-radius: 20px; padding: 3px 12px; font-size: 0.8rem;
+    margin-right: 6px; margin-top: 4px;
+  }
+  footer { margin-top: 40px; font-size: 0.85rem; color: #b0a08a; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maths — Applis pour la classe</h1>
+  <p>Petites applications pour estimer, organiser et lire les grands nombres.</p>
+</header>
+
+<main class="grid">
+  <a class="card" href="organiser-cubes/">
+    <h2>Organiser les cubes</h2>
+    <p>Une collection de cubes apparaît en vrac&nbsp;: estime-la, puis regarde les cubes se ranger tout seuls en dizaines, centaines et milliers pour lire le nombre.</p>
+    <div class="tags">
+      <span class="tag">Numération</span>
+      <span class="tag">Estimation</span>
+      <span class="tag">Jusqu'à 100 000</span>
+    </div>
+  </a>
+</main>
+
+<footer>
+  Pour ajouter une activité&nbsp;: créer un dossier avec un fichier <code>index.html</code>, puis ajouter une carte sur cette page.
+</footer>
+</body>
+</html>
