@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TRIO — jeu de calcul mental</title>
-<!-- Règles : 49 pions 1 à 9 en carré 7×7 ; un jeton est retourné, trouver 3 nombres alignés côte à côte qui donnent la valeur du jeton avec une multiplication et une addition — ou une soustraction. 5 minutes par jeton, victoire à 10 jetons. -->
+<!-- Règles : 49 pions 1 à 9 en carré 7×7 ; une cible est retournée, trouver un maximum de TRIO — 3 nombres alignés côte à côte qui donnent la cible avec une multiplication et une addition — ou une soustraction. La grille et la cible ne changent que lors du clic sur « Nouvelle partie ». -->
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; min-height: 100%; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; color: #5b4636; }
@@ -22,7 +22,7 @@
   #plateau {
     background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
     padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
-    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 460px;
+    display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 640px;
   }
 
   #zone-jeu {
@@ -71,7 +71,7 @@
     min-height: 2.6em;
   }
 
-  #zone-jeton { text-align: center; margin-top: 14px; width: 100%; }
+  #zone-cible { text-align: center; margin-top: 14px; width: 100%; }
   #jeton-affiche {
     display: inline-block; width: 54px; height: 54px; line-height: 54px;
     border-radius: 50%; background: #fee2e2; color: #b91c1c;
@@ -96,6 +96,21 @@
   #message.ok { display: block; background: #d1fae5; color: #065f46; }
   #message.ko { display: block; background: #fee2e2; color: #b91c1c; }
 
+  #trios {
+    margin-top: 16px; width: 100%;
+    background: #f9f4e8; border: 2px dashed #e0c9a6; border-radius: 14px;
+    padding: 12px 14px;
+  }
+  #trios h2 { margin: 0 0 8px; color: #7f4f24; font-size: 1rem; }
+  #liste-trios {
+    display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .trio-gagne {
+    background: #d1fae5; color: #065f46; border-radius: 999px;
+    padding: 6px 14px; font-size: .95rem; font-weight: 700;
+  }
+  #trios .vide { font-size: .85rem; color: #b0a08a; margin: 0; }
+
   #regles {
     margin-top: 16px; width: 100%;
     background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px; padding: 14px 16px;
@@ -114,13 +129,12 @@
 <body>
 <header>
   <h1>TRIO — jeu de calcul mental</h1>
-  <p>Clique une carte, choisis un signe, clique une deuxième carte&nbsp;: le résultat apparaît à côté. Clique sur ce résultat, choisis un signe, puis clique la troisième carte pour finir le calcul.</p>
+  <p>Cherche un maximum de TRIO pour la même cible&nbsp;! La grille et la cible ne changent que quand tu lances une nouvelle partie.</p>
 </header>
 
 <div id="scorebar">
-  <span>Jetons gagnés&nbsp;: <b id="gagnes">0</b> / 10</span>
-  <span>Pioche&nbsp;: <span id="pioche">50</span></span>
-  <span>Écartés&nbsp;: <span id="ecartes">0</span></span>
+  <span>Cible&nbsp;: <b id="cible-affichee">—</b></span>
+  <span>TRIOs trouvés&nbsp;: <b id="gagnes">0</b></span>
 </div>
 
 <div id="plateau">
@@ -138,12 +152,17 @@
     </div>
   </div>
 
-  <div id="zone-jeton">
+  <div id="zone-cible">
     <div class="boutons" id="actions">
-      <button class="action" id="btn-piocher">🎲 Retourner un jeton</button>
+      <button class="action" id="btn-cible">🎲 Retourner une cible</button>
     </div>
     <p id="chrono" hidden></p>
     <p id="message"></p>
+  </div>
+
+  <div id="trios">
+    <h2>TRIOs trouvés</h2>
+    <div id="liste-trios"><p class="vide">Aucun TRIO pour l'instant.</p></div>
   </div>
 
   <div class="boutons">
@@ -153,14 +172,14 @@
   <div id="regles">
     <h2>Règles</h2>
     Les 49 pions (nombres de 1 à 9) forment un grand carré de 7×7, disposés au hasard.
-    On retourne un jeton «&nbsp;résultat&nbsp;» : sois le premier à repérer un TRIO — 3 nombres
+    Une cible «&nbsp;résultat&nbsp;» est retournée&nbsp;: trouve tous les TRIO que tu peux — 3 nombres
     <b>alignés côte à côte</b> (horizontal, vertical ou diagonal) qui, avec une multiplication
-    et une addition — ou une multiplication et une soustraction, donnent la valeur du jeton.
-    Le jeton est gagné&nbsp;! Après 5 minutes sans TRIO trouvé, le jeton est écarté.
-    Le premier joueur à 10 jetons a gagné&nbsp;!
+    et une addition — ou une multiplication et une soustraction, donnent la valeur de la cible.
+    Chaque TRIO validé est conservé dans le bandeau «&nbsp;TRIOs trouvés&nbsp;».
+    La grille et la cible ne changent que lors du clic sur <b>Nouvelle partie</b>.
     <details>
       <summary>Exemple</summary>
-      <p style="margin:6px 0 0">Jeton <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: clique 3, choisis <b>×</b>, clique 5 → le résultat 15 apparaît à côté. Clique sur <b>15</b>, choisis <b>−</b>, clique 1&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;!</p>
+      <p style="margin:6px 0 0">Cible <b>14</b> avec les pions 3, 5 et 1 alignés&nbsp;: clique 3, choisis <b>×</b>, clique 5 → le résultat 15 apparaît à côté. Clique sur <b>15</b>, choisis <b>−</b>, clique 1&nbsp;: 3 × 5 − 1 = 14. TRIO&nbsp;! Cherche-en d'autres pour la même cible.</p>
     </details>
   </div>
 </div>
@@ -169,13 +188,13 @@
 
 <script>
 (function () {
-  var TAILLE = 7, NOMBRES = 9, JETONS_PIOCHE = 50, VICTOIRE = 10, DELAI = 300;
+  var TAILLE = 7, NOMBRES = 9, JETONS_PIOCHE = 50, DELAI = 300;
   var PAS = [];
   for (var dl = -1; dl <= 1; dl++) for (var dc = -1; dc <= 1; dc++)
     if (dl !== 0 || dc !== 0) PAS.push([dl, dc]);
   var SIGNES = { '+': '+', '-': '−', '*': '×' };
 
-  var grille, pioche, jeton, gagnes, ecartes, fini;
+  var grille, pioche, cible, gagnes, trios;
   var debut, chronoTimer = null;
   var etape, pion1, signe1, pion2, signe2;
 
@@ -183,6 +202,7 @@
   var grilleEl = $('grille'), messageEl = $('message'), chronoEl = $('chrono');
   var actionsEl = $('actions'), exprEl = $('expression');
   var chipEl = $('chip-resultat'), opsEl = $('ops'), consigneEl = $('consigne');
+  var listeTriosEl = $('liste-trios');
 
   function alea(n) { return Math.floor(Math.random() * n); }
 
@@ -204,13 +224,14 @@
     for (var p = pioche.length - 1; p > 0; p--) {
       var q = alea(p + 1), u = pioche[p]; pioche[p] = pioche[q]; pioche[q] = u;
     }
-    jeton = null; gagnes = 0; ecartes = 0; fini = false;
+    cible = null; gagnes = 0; trios = [];
     reinitialiserCalcul();
     dessinerGrille();
     message('', null);
-    majScore();
-    majActions();
     arreterChrono();
+    majScore();
+    majTrios();
+    majActions();
   }
 
   function reinitialiserCalcul() {
@@ -219,7 +240,7 @@
     chipEl.hidden = true;
     chipEl.classList.remove('actif');
     marquerOps(null);
-    consigne(jeton !== null && !fini ? 'Clique une première carte.' : '');
+    consigne(cible !== null ? 'Clique une première carte.' : '');
     marquerPions();
   }
 
@@ -267,7 +288,7 @@
   }
 
   function choisir(l, c) {
-    if (jeton === null || fini) return;
+    if (cible === null) return;
     if (etape === 'pion1') {
       pion1 = { l: l, c: c };
       etape = 'signe1';
@@ -305,26 +326,27 @@
       var expr = grille[pion1.l][pion1.c] + ' ' + SIGNES[signe1] + ' ' +
                  grille[pion2.l][pion2.c] + ' ' + SIGNES[signe2] + ' ' + grille[l][c];
       exprEl.textContent = expr + ' = ' + final;
-      if (final !== jeton) {
-        message(expr + ' = ' + final + ', ce n’est pas ' + jeton + '.', 'ko');
+      if (final !== cible) {
+        message(expr + ' = ' + final + ', ce n’est pas ' + cible + '.', 'ko');
+        reinitialiserCalcul();
+        return;
+      }
+      if (trios.indexOf(expr) >= 0) {
+        message('Ce TRIO a déjà été trouvé : ' + expr + ' = ' + cible + '.', 'ko');
         reinitialiserCalcul();
         return;
       }
       gagnes++;
-      var msg = 'TRIO gagné ! ' + expr + ' = ' + jeton;
-      jeton = null;
-      arreterChrono();
-      if (gagnes >= VICTOIRE) { fini = true; msg += ' — victoire !'; }
-      else if (pioche.length === 0) { fini = true; msg += ' — pioche épuisée !'; }
-      message(msg, 'ok');
+      trios.push(expr);
+      message('TRIO gagné ! ' + expr + ' = ' + cible + '. Cherche-en un autre !', 'ok');
+      majTrios();
       reinitialiserCalcul();
       majScore();
-      majActions();
     }
   }
 
   function choisirOp(op) {
-    if (jeton === null || fini) return;
+    if (cible === null) return;
     if (etape === 'signe1') {
       signe1 = op;
       etape = 'pion2';
@@ -343,7 +365,7 @@
   }
 
   function choisirResultat() {
-    if (etape !== 'resultat' || jeton === null || fini) return;
+    if (etape !== 'resultat' || cible === null) return;
     chipEl.classList.add('actif');
     etape = 'signe2';
     consigne('Choisis un signe pour finir le calcul.');
@@ -370,29 +392,11 @@
     return false;
   }
 
-  function piocher() {
-    if (fini || pioche.length === 0) return;
-    jeton = pioche.pop();
+  function retournerCible() {
+    if (pioche.length === 0) return;
+    cible = pioche.pop();
     reinitialiserCalcul();
     message('', null);
-    majScore();
-    majActions();
-    lancerChrono();
-  }
-
-  function ecarter() {
-    if (jeton === null || fini) return;
-    ecartes++;
-    jeton = null;
-    arreterChrono();
-    message('Jeton écarté.', 'ko');
-    reinitialiserCalcul();
-    if (pioche.length === 0) fini = true;
-    majScore();
-    majActions();
-  }
-
-  function lancerChrono() {
     arreterChrono();
     debut = Math.floor(Date.now() / 1000);
     chronoEl.hidden = false;
@@ -400,11 +404,14 @@
       var reste = debut + DELAI - Math.floor(Date.now() / 1000);
       chronoEl.textContent = reste > 0
         ? '⏱ Temps restant : ' + reste + ' s'
-        : 'Temps écoulé : écarte le jeton si personne ne trouve.';
+        : 'Temps écoulé sur cette cible — passe à une autre si tu veux.';
     };
     maj();
     chronoTimer = setInterval(maj, 1000);
+    majScore();
+    majActions();
   }
+
   function arreterChrono() {
     if (chronoTimer) clearInterval(chronoTimer);
     chronoTimer = null;
@@ -417,37 +424,46 @@
   }
 
   function majScore() {
+    $('cible-affichee').textContent = cible !== null ? cible : '—';
     $('gagnes').textContent = gagnes;
-    $('pioche').textContent = pioche.length;
-    $('ecartes').textContent = ecartes;
+  }
+
+  function majTrios() {
+    listeTriosEl.innerHTML = '';
+    if (trios.length === 0) {
+      var vide = document.createElement('p');
+      vide.className = 'vide';
+      vide.textContent = 'Aucun TRIO pour l\'instant.';
+      listeTriosEl.appendChild(vide);
+      return;
+    }
+    trios.forEach(function (expr) {
+      var p = document.createElement('span');
+      p.className = 'trio-gagne';
+      p.textContent = expr + ' = ' + cible;
+      listeTriosEl.appendChild(p);
+    });
   }
 
   function majActions() {
     actionsEl.innerHTML = '';
-    if (jeton !== null && !fini) {
-      var jetonAff = document.createElement('span');
-      jetonAff.id = 'jeton-affiche';
-      jetonAff.textContent = jeton;
-      actionsEl.appendChild(jetonAff);
-
-      var be = document.createElement('button');
-      be.className = 'action secondaire';
-      be.textContent = 'Aucun TRIO — écarter';
-      be.addEventListener('click', ecarter);
-      actionsEl.appendChild(be);
-    } else if (!fini) {
-      var bp = document.createElement('button');
-      bp.className = 'action';
-      bp.textContent = '🎲 Retourner un jeton';
-      bp.disabled = pioche.length === 0;
-      bp.addEventListener('click', piocher);
-      actionsEl.appendChild(bp);
+    if (cible !== null) {
+      var aff = document.createElement('span');
+      aff.id = 'jeton-affiche';
+      aff.textContent = cible;
+      actionsEl.appendChild(aff);
+    } else if (pioche.length > 0) {
+      var bc = document.createElement('button');
+      bc.className = 'action';
+      bc.textContent = '🎲 Retourner une cible';
+      bc.addEventListener('click', retournerCible);
+      actionsEl.appendChild(bc);
     } else {
       var fin = document.createElement('p');
       fin.style.margin = '0';
       fin.style.fontWeight = '600';
       fin.style.color = '#065f46';
-      fin.textContent = 'Partie terminée ! ' + gagnes + ' jeton' + (gagnes !== 1 ? 's' : '') + ' gagné' + (gagnes !== 1 ? 's' : '') + (gagnes >= VICTOIRE ? ' — victoire !' : '.');
+      fin.textContent = 'Plus aucune cible — ' + gagnes + ' TRIO' + (gagnes !== 1 ? 's' : '') + ' trouvé' + (gagnes !== 1 ? 's' : '') + ' au total.';
       actionsEl.appendChild(fin);
     }
   }
