@@ -248,19 +248,22 @@ function computeOrganisedLayout() {
   const u = N % 10;
 
   const gap = 3;
-  const bw = 100, bh = 10;
+  // Matériel base 10 : unité 1×1 ; dizaine 10×1 ; centaine 10×10 ;
+  // millier = grand cube 10×10×10 vu en 3D (décalage de profondeur en unités)
+  const d3 = 2.6;
 
   let best = null;
   const maxBpr = Math.max(1, Math.ceil(Math.sqrt(Math.max(th, 1))));
   for (let bpr = 1; bpr <= maxBpr; bpr++) {
     const rows = Math.ceil(th / bpr) || 1;
-    const blocksW = th ? bpr * bw + (bpr - 1) * gap : 0;
+    const blocksW = th ? bpr * (10 + d3) + (bpr - 1) * gap : 0;
     let remW = 0;
     if (h) remW += h * 10 + (h - 1) * gap;
     if (t) remW += (h ? gap : 0) + t * 10 + (t - 1) * gap;
     if (u) remW += (h || t ? gap : 0) + u * 1 + (u - 1) * gap;
     const widthUnits = Math.max(blocksW, remW);
-    const heightUnits = rows * (bh + gap) + 10 + (th ? gap : 0);
+    const remH = (h || t) ? 10 : (u ? 1 : 1);
+    const heightUnits = rows * (10 + d3 + gap) + remH + (th ? gap : 0);
     const scale = Math.min(availW / Math.max(widthUnits, 1), availH / Math.max(heightUnits, 1), 22 * DPR);
     if (!best || scale > best.scale) best = { bpr, scale, widthUnits, heightUnits };
   }
@@ -281,18 +284,21 @@ function computeOrganisedLayout() {
   const bpr = best.bpr;
   const rows = Math.ceil(th / bpr) || 1;
 
+  const d3s = d3 * s; // décalage 3D en px
+
   let idx = 0;
   for (let b = 0; b < th; b++) {
     const row = Math.floor(b / bpr);
     const col = b % bpr;
-    const bx = originX + col * (bw * s + g);
-    const by = originY + row * (bh * s + g);
+    const bx = originX + col * ((10 + d3) * s + g);
+    const by = originY + row * ((10 + d3) * s + g);
     const gIdx = groups.length;
-    for (let plate = 0; plate < 10; plate++) {
-      const px = bx + plate * 10 * s;
+    // Les 1 000 cubes volent vers la face avant du grand cube
+    // (10 couches de 100 superposées : ils disparaissent une fois rangés)
+    for (let layer = 0; layer < 10; layer++) {
       for (let yy = 0; yy < 10; yy++) {
         for (let xx = 0; xx < 10; xx++) {
-          positions.x[idx] = px + xx * s;
+          positions.x[idx] = bx + xx * s;
           positions.y[idx] = by + yy * s;
           cubeGroup[idx] = gIdx;
           idx++;
@@ -300,12 +306,13 @@ function computeOrganisedLayout() {
       }
     }
     groups.push({
-      x: bx - g / 2, y: by - g / 2, w: bw * s + g, h: bh * s + g,
+      kind: "thousand",
+      x: bx, y: by, w: 10 * s, h: 10 * s, d3: d3s,
       label: "1 000", strong: true, lastIdx: idx - 1, drawn: false,
     });
   }
 
-  const restY = originY + (th ? rows * (bh * s + g) : 0);
+  const restY = originY + (th ? rows * ((10 + d3) * s + g) : 0);
   let rx = originX;
   const baseY = restY + 10 * s;
 
@@ -320,7 +327,8 @@ function computeOrganisedLayout() {
       }
     }
     groups.push({
-      x: rx - g / 2, y: baseY - 10 * s - g / 2, w: 10 * s + g, h: 10 * s + g,
+      kind: "hundred",
+      x: rx, y: baseY - 10 * s, w: 10 * s, h: 10 * s,
       label: "100", strong: false, lastIdx: idx - 1, drawn: false,
     });
     rx += 10 * s + g;
@@ -334,7 +342,8 @@ function computeOrganisedLayout() {
       idx++;
     }
     groups.push({
-      x: rx - g / 2, y: baseY - s - g / 2, w: 10 * s + g, h: s + g,
+      kind: "ten",
+      x: rx, y: baseY - s, w: 10 * s, h: s,
       label: "10", strong: false, lastIdx: idx - 1, drawn: false,
     });
     rx += 10 * s + g;
@@ -348,8 +357,8 @@ function computeOrganisedLayout() {
   }
   if (u) {
     groups.push({
-      x: rx - (u * (s + g)) - g / 2, y: baseY - s - g / 2,
-      w: u * (s + g) - g + g, h: s + g,
+      kind: "units",
+      x: rx, y: baseY - s, w: u * s, h: s,
       label: String(u), strong: false, lastIdx: idx - 1, drawn: false,
       unitsOnly: true,
     });
@@ -400,16 +409,74 @@ function easeInOut(p) {
   return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
 }
 
-function drawGroupShape(grp, s) {
-  settledCtx.strokeStyle = "rgba(90, 50, 10, 0.6)";
-  settledCtx.lineWidth = Math.max(1.5, s * 0.18);
-  settledCtx.strokeRect(grp.x, grp.y, grp.w, grp.h);
-  if (grp.unitsOnly) return; // les unités restent visibles, pas d'étiquette
+// ---------- Rendu du matériel base 10 ----------
+function drawBase10(grp, s) {
+  const g2 = settledCtx;
+  const lw = Math.max(1.5, s * 0.22);
+  g2.lineJoin = "round";
+
+  if (grp.unitsOnly) return; // les cubes unités restent dessinés, pas de bloc
+
+  if (grp.kind === "thousand") {
+    // Grand cube 10×10×10 vu en 3D : face avant + faces supérieure et droite
+    const x = grp.x, y = grp.y, w = grp.w, d = grp.d3;
+    // face supérieure (parallélogramme)
+    g2.beginPath();
+    g2.moveTo(x, y); g2.lineTo(x + d, y - d);
+    g2.lineTo(x + w + d, y - d); g2.lineTo(x + w, y);
+    g2.closePath();
+    g2.fillStyle = CUBE_LIGHT; g2.fill();
+    // face droite (parallélogramme)
+    g2.beginPath();
+    g2.moveTo(x + w, y); g2.lineTo(x + w + d, y - d);
+    g2.lineTo(x + w + d, y - d + w); g2.lineTo(x + w, y + w);
+    g2.closePath();
+    g2.fillStyle = CUBE_DARK; g2.fill();
+    // face avant (carré 10×10)
+    g2.fillStyle = CUBE; g2.fillRect(x, y, w, w);
+    // grille 10×10 sur la face avant
+    g2.strokeStyle = STROKE; g2.lineWidth = 1;
+    for (let i = 1; i < 10; i++) {
+      const p = i * s;
+      g2.beginPath(); g2.moveTo(x + p, y); g2.lineTo(x + p, y + w); g2.stroke();
+      g2.beginPath(); g2.moveTo(x, y + p); g2.lineTo(x + w, y + p); g2.stroke();
+    }
+    g2.strokeStyle = "rgba(90, 50, 10, 0.8)";
+    g2.lineWidth = lw;
+    g2.strokeRect(x, y, w, w);
+  } else {
+    // Centaine : plaque 10×10 ; dizaine : réglette 10×1
+    g2.fillStyle = CUBE;
+    g2.fillRect(grp.x, grp.y, grp.w, grp.h);
+    g2.fillStyle = CUBE_LIGHT;
+    g2.fillRect(grp.x, grp.y, grp.w, Math.max(1, grp.h * 0.2));
+    g2.fillStyle = CUBE_DARK;
+    g2.fillRect(grp.x, grp.y + grp.h - Math.max(1, grp.h * 0.15), grp.w, Math.max(1, grp.h * 0.15));
+    g2.strokeStyle = STROKE; g2.lineWidth = 1;
+    if (grp.kind === "hundred") {
+      for (let i = 1; i < 10; i++) {
+        const p = i * s;
+        g2.beginPath(); g2.moveTo(grp.x + p, grp.y); g2.lineTo(grp.x + p, grp.y + grp.h); g2.stroke();
+        g2.beginPath(); g2.moveTo(grp.x, grp.y + p); g2.lineTo(grp.x + grp.w, grp.y + p); g2.stroke();
+      }
+    } else {
+      for (let i = 1; i < 10; i++) {
+        const p = i * s;
+        g2.beginPath(); g2.moveTo(grp.x + p, grp.y); g2.lineTo(grp.x + p, grp.y + grp.h); g2.stroke();
+      }
+    }
+    g2.strokeStyle = "rgba(90, 50, 10, 0.8)";
+    g2.lineWidth = lw;
+    g2.strokeRect(grp.x, grp.y, grp.w, grp.h);
+  }
+
+  // étiquette
   const fs = Math.max(11 * DPR, Math.min(s * 3, 24 * DPR));
-  settledCtx.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
-  settledCtx.textAlign = "center";
-  settledCtx.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
-  settledCtx.fillText(grp.label, grp.x + grp.w / 2, grp.y + grp.h + Math.max(10, s * 1.2));
+  g2.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
+  g2.textAlign = "center";
+  g2.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
+  const labelY = grp.kind === "thousand" ? grp.y + grp.h + Math.max(10, s) : grp.y + grp.h + Math.max(10, s * 1.4);
+  g2.fillText(grp.label, grp.x + grp.w / 2, labelY);
 }
 
 function drawOrganizing(now) {
@@ -443,7 +510,7 @@ function drawOrganizing(now) {
   for (let gi = a.finalizedUpTo; gi < a.groups.length; gi++) {
     const grp = a.groups[gi];
     if (grp.lastIdx < a.settledUpTo) {
-      drawGroupShape(grp, cubeS);
+      drawBase10(grp, cubeS);
       grp.drawn = true;
       a.finalizedUpTo = gi + 1;
     } else break;
@@ -492,7 +559,7 @@ function showFinalFeedback(v) {
       : `Il y a en réalité <b>${fmt(N)}</b> cubes, soit ${diff > 0 ? `${fmt(diff)} de moins que ta réponse` : `${fmt(-diff)} de plus que ta réponse`}.`}</p>
     <p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
       Ton estimation <b>avant</b> l'organisation était&nbsp;: <b>${fmt(firstEstimate)}</b>
-      (${firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
+      (${firstEstimate === null ? "non notée" : firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
     </p>
     <p>${breakdownText()} — on lit la quantité dans les groupes, sans compter les cubes un par un.</p>
     <button id="restartBtn">Recommencer</button>
