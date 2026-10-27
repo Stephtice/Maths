@@ -359,8 +359,8 @@ function computeOrganisedLayout() {
     if (u) {
       // largeur des constellations de dés (grille 3×3 par tranche de 5)
       const nbDice = Math.ceil(u / 5);
-      // constellation du 5 : plus large (≈ 5,05 cubes) ; les autres : 4 cubes
-      const diceWMax = u >= 5 ? 5.05 + gap : 4 + gap;
+      // toutes les constellations ont la taille du 5 (≈ 5,05 cubes) + écart
+      const diceWMax = 5.05 + gap;
       remW += (h || t ? gap : 0) + nbDice * diceWMax + (nbDice - 1) * gap;
     }
     const widthUnits = Math.max(blocksW, remW);
@@ -462,16 +462,12 @@ function computeOrganisedLayout() {
       4: [[0, 0], [0, 2], [2, 0], [2, 2]],
       5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
     };
-    // grille 3×3 d'un dé : points extrêmes (colonnes 0 et 2) séparés de 2×cell ;
-    // espace libre entre 2 cubes = 2×cell − s = 2 cubes exactement.
-    // Pour le 5 (quinconx), le point central doit garder de l'espace avec
-    // les coins : en diagonale, la distance entre centres vaut cell×√2 ;
-    // les cubes se touchent en diagonale si cell×√2 ≤ 2s. On agrandit donc
-    // la cellule pour le 5 afin de dégager le centre (cellule ×1,35).
-    const cell = s * 1.5;
-    const cell5 = cell * 1.35;     // cellule aérée pour la constellation du 5
-    const diceW = cell * 2 + s;   // largeur d'une constellation = 4 cubes
-    const diceH = cell * 2 + s;   // hauteur d'une constellation = 4 cubes
+    // grille 3×3 d'un dé, même cellule aérée pour toutes les constellations :
+    // le 5 (quincunx) impose une cellule ×1,35 pour dégager le point central
+    // des coins en diagonale ; toutes les figures partagent cette taille.
+    const cell = s * 1.5 * 1.35;  // cellule unique, aérée comme le 5
+    const diceW = cell * 2 + s;   // largeur d'une constellation ≈ 5,05 cubes
+    const diceH = cell * 2 + s;   // hauteur d'une constellation ≈ 5,05 cubes
     const unitsStartX = rx;       // début réel de la zone des unités
     let maxDiceH = diceH;         // hauteur de la plus grande constellation posée
     let remaining = u;
@@ -479,16 +475,13 @@ function computeOrganisedLayout() {
       const n = Math.min(remaining, 5);
       remaining -= n;
       const pts = dice[n];
-      // le 5 utilise une cellule plus grande pour aérer le point central
-      const c = (n === 5) ? cell5 : cell;
       for (const [cx, cy] of pts) {
-        positions.x[idx] = rx + cx * c;
-        positions.y[idx] = baseY - s - cy * c;
+        positions.x[idx] = rx + cx * cell;
+        positions.y[idx] = baseY - s - cy * cell;
         cubeGroup[idx] = -1;
         idx++;
       }
-      rx += (n === 5 ? cell5 * 2 + s : diceW) + g * 2;
-      if (n === 5) maxDiceH = Math.max(maxDiceH, cell5 * 2 + s);
+      rx += diceW + g * 2;
     }
     // largeur réellement occupée : dernière position + un cube, moins l'écart final
     const totalUnitsW = (rx - g * 2) - unitsStartX;
