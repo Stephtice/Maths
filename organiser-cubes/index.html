@@ -253,9 +253,12 @@ function computeOrganisedLayout() {
   // millier = grand cube 10×10×10 vu en 3D (décalage de profondeur en unités)
   const d3 = 2.6;
 
+  // Rangées de 10 blocs de milliers (10 × 1 000 = 10 000 par rangée)
+  // pour faciliter le comptage ; 5 par rangée si l'écran est étroit.
+  // La dernière rangée peut être incomplète.
   let best = null;
-  const maxBpr = Math.max(1, Math.ceil(Math.sqrt(Math.max(th, 1))));
-  for (let bpr = 1; bpr <= maxBpr; bpr++) {
+  const candidates = th <= 10 ? [Math.max(1, th)] : [10, 5];
+  for (const bpr of candidates) {
     const rows = Math.ceil(th / bpr) || 1;
     const blocksW = th ? bpr * (10 + d3) + (bpr - 1) * gap : 0;
     let remW = 0;
