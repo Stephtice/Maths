@@ -7,43 +7,43 @@
 <!-- Règles : 49 pions en carré 7×7 (couleurs et nombres du fichier Cartes Trio) ; une cible entre 1 et 30 est retournée (cibles ≥ 10 deux fois plus probables que les cibles < 10), trouver un maximum de TRIO — 3 nombres alignés côte à côte qui donnent la cible avec une multiplication et une addition — ou une soustraction. La grille et la cible ne changent que lors du clic sur « Nouvelle partie ». -->
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; min-height: 100%; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; color: #5b4636; }
+  html, body { margin: 0; padding: 0; min-height: 100%; background: #eef4fb; font-family: "Segoe UI", system-ui, sans-serif; color: #1f3a5f; }
   body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
 
   #regles-haut {
     position: fixed; top: 10px; left: 10px; z-index: 30;
     max-width: 280px; max-height: 80vh; overflow-y: auto;
-    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    background: #f8fbff; border: 2px solid #b8cfe8; border-radius: 14px;
     padding: 12px 14px; font-size: .8rem; line-height: 1.45;
     box-shadow: 0 4px 14px rgba(0,0,0,.12);
   }
-  #regles-haut h2 { margin: 0 0 6px; color: #7f4f24; font-size: .95rem; }
+  #regles-haut h2 { margin: 0 0 6px; color: #1a5276; font-size: .95rem; }
   #regles-haut details summary { cursor: pointer; color: #e76f51; font-weight: 600; margin-top: 6px; }
   #regles-haut .fermer-regles {
     display: block; margin-top: 8px; width: 100%; padding: 6px 0;
-    border: none; border-radius: 8px; background: #f7c948; color: #5b4636;
+    border: none; border-radius: 8px; background: #f7c948; color: #1a5276;
     font-weight: 700; cursor: pointer;
   }
   #regles-haut[hidden] { display: none; }
   #btn-regles {
     position: fixed; top: 10px; left: 10px; z-index: 31;
-    padding: 6px 12px; border: 2px solid #e0c9a6; border-radius: 999px;
-    background: #fffdf8; color: #7f4f24; font-size: .85rem; font-weight: 700;
+    padding: 6px 12px; border: 2px solid #b8cfe8; border-radius: 999px;
+    background: #f8fbff; color: #1a5276; font-size: .85rem; font-weight: 700;
     cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.12);
   }
 
   header { text-align: center; margin-bottom: 10px; }
-  h1 { margin: 0; color: #7f4f24; font-size: 1.6rem; }
+  h1 { margin: 0; color: #1a5276; font-size: 1.6rem; }
   header p { margin: 6px 0 0; font-size: .95rem; }
 
   #scorebar {
     display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px;
-    font-size: .9rem; color: #7f4f24; margin-bottom: 10px;
+    font-size: .9rem; color: #1a5276; margin-bottom: 10px;
   }
   #scorebar b { color: #e76f51; font-size: 1.05rem; }
 
   #plateau {
-    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    background: #f8fbff; border: 2px solid #b8cfe8; border-radius: 14px;
     padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
     display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 720px;
   }
@@ -65,40 +65,40 @@
   .ligne { display: flex; gap: 6px; }
   .pion {
     width: 44px; height: 44px; border: none; border-radius: 8px;
-    background: #7f4f24; color: #fff; font-size: 1.15rem; font-weight: 700;
+    background: #1a5276; color: #fff; font-size: 1.15rem; font-weight: 700;
     cursor: pointer; transition: transform .1s, background .15s;
   }
   .pion:active { transform: scale(.92); }
-  .pion.actif { background: #f7c948; color: #5b4636; box-shadow: 0 0 0 3px #e76f5155; }
+  .pion.actif { background: #f7c948; color: #1a5276; box-shadow: 0 0 0 3px #e76f5155; }
 
   #cote {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     min-width: 130px; padding-top: 8px;
   }
   #expression {
-    min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: #7f4f24;
+    min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: #1a5276;
     text-align: center; white-space: nowrap;
   }
   #chip-resultat {
     width: 64px; height: 64px; border-radius: 50%;
-    border: 3px solid #e0c9a6; background: #fffdf8; color: #7f4f24;
+    border: 3px solid #b8cfe8; background: #f8fbff; color: #1a5276;
     font-size: 1.35rem; font-weight: 700; cursor: pointer;
     transition: background .15s, border-color .15s, transform .1s;
   }
   #chip-resultat:active { transform: scale(.92); }
-  #chip-resultat.actif { border-color: #e76f51; background: #f7c948; color: #5b4636; }
+  #chip-resultat.actif { border-color: #e76f51; background: #f7c948; color: #1a5276; }
   #chip-resultat[hidden] { display: none; }
   #ops { margin-top: 0; }
   button.op {
     width: 52px; height: 52px; border: none; border-radius: 10px;
-    background: #7f4f24; color: #fff; font-size: 1.5rem; font-weight: 700; cursor: pointer;
+    background: #1a5276; color: #fff; font-size: 1.5rem; font-weight: 700; cursor: pointer;
     transition: background .15s, transform .1s;
   }
   button.op:active { transform: scale(.92); }
-  button.op:disabled { background: #d8c9b4; cursor: default; }
+  button.op:disabled { background: #b9cbde; cursor: default; }
   button.op.actif { background: #e76f51; }
   #consigne {
-    margin: 0; font-size: .85rem; color: #b0a08a; text-align: center; max-width: 150px;
+    margin: 0; font-size: .85rem; color: #6b87a8; text-align: center; max-width: 150px;
     min-height: 2.6em;
   }
 
@@ -118,9 +118,9 @@
     font-size: 2.2rem;
   }
   #etiquette-cible {
-    font-size: .9rem; font-weight: 700; color: #7f4f24;
+    font-size: .9rem; font-weight: 700; color: #1a5276;
   }
-  #chrono { margin: 0; font-size: .85rem; color: #b0a08a; text-align: center; }
+  #chrono { margin: 0; font-size: .85rem; color: #6b87a8; text-align: center; }
 
   .boutons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
   button.action {
@@ -128,8 +128,8 @@
     background: #e76f51; color: #fff; cursor: pointer; font-weight: 600;
   }
   button.action:hover { background: #d45f3d; }
-  button.action:disabled { background: #d8c9b4; cursor: default; }
-  button.secondaire { background: #f7c948; color: #5b4636; }
+  button.action:disabled { background: #b9cbde; cursor: default; }
+  button.secondaire { background: #f7c948; color: #1a5276; }
   button.secondaire:hover { background: #e9b93b; }
 
   #message {
@@ -141,10 +141,10 @@
 
   #trios {
     margin-top: 16px; width: 100%;
-    background: #f9f4e8; border: 2px dashed #e0c9a6; border-radius: 14px;
+    background: #e4eefb; border: 2px dashed #b8cfe8; border-radius: 14px;
     padding: 12px 14px;
   }
-  #trios h2 { margin: 0 0 8px; color: #7f4f24; font-size: 1rem; }
+  #trios h2 { margin: 0 0 8px; color: #1a5276; font-size: 1rem; }
   #liste-trios {
     display: flex; flex-wrap: wrap; gap: 8px;
   }
@@ -152,9 +152,9 @@
     background: #d1fae5; color: #065f46; border-radius: 999px;
     padding: 6px 14px; font-size: .95rem; font-weight: 700;
   }
-  #trios .vide { font-size: .85rem; color: #b0a08a; margin: 0; }
+  #trios .vide { font-size: .85rem; color: #6b87a8; margin: 0; }
 
-  a.retour { margin-top: 16px; font-size: .9rem; color: #b0a08a; }
+  a.retour { margin-top: 16px; font-size: .9rem; color: #6b87a8; }
 
   @media (max-width: 400px) {
     .pion { width: 38px; height: 38px; font-size: 1rem; }
