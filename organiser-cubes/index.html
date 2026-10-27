@@ -554,7 +554,10 @@ function easeInOut(p) {
 
 // ---------- Rendu du matériel base 10 ----------
 function drawBase10(grp, s) {
-  const g2 = settledCtx;
+  drawBase10On(settledCtx, grp, s);
+}
+
+function drawBase10On(g2, grp, s) {
   const lw = Math.max(1.5, s * 0.22);
   g2.lineJoin = "round";
 
@@ -647,28 +650,51 @@ function drawOrganizing(now) {
   const settleTarget = Math.min(a.launchedUpTo, Math.max(0, doneWave * a.waveSize));
   if (settleTarget > a.settledUpTo) {
     for (let i = a.settledUpTo; i < settleTarget; i++) {
-      // Le cube disparaît dès qu'il est rangé ; seules les unités restent dessinées
-      if (cubeGroup[i] === -1) {
-        drawCube(settledCtx, targetX[i], targetY[i], cubeS, 1);
-      }
+      // Construction visible : chaque cube posé reste dessiné à sa place,
+      // on voit la réglette / plaque / face du grand cube se construire.
+      drawCube(settledCtx, targetX[i], targetY[i], cubeS, 1);
     }
     a.settledUpTo = settleTarget;
   }
 
-  // Finaliser les groupes dont tous les cubes sont rangés
-  for (let gi = a.finalizedUpTo; gi < a.groups.length; gi++) {
+  // Finalisation en fondu : quand un groupe est complet, le bloc final
+  // recouvre progressivement la construction (fondu ~400 ms).
+  const FADE_MS = 400;
+  for (let gi = 0; gi < a.groups.length; gi++) {
     const grp = a.groups[gi];
+    if (grp.drawn) continue;
     if (grp.lastIdx < a.settledUpTo) {
-      drawBase10(grp, cubeS);
-      grp.drawn = true;
-      a.finalizedUpTo = gi + 1;
-    } else break;
+      if (grp.fadeStart === undefined) grp.fadeStart = t;
+      const alpha = Math.min(1, (t - grp.fadeStart) / FADE_MS);
+      grp.fadeAlpha = alpha;
+      if (alpha >= 1) {
+        // efface la construction (cubes individuels) puis grave le bloc final
+        // (marge élargie pour le millier : sa face 3D déborde de grp.d3)
+        const m = 4;
+        const d = grp.d3 || 0;
+        settledCtx.fillStyle = BG;
+        settledCtx.fillRect(grp.x - m, grp.y - m - d, grp.w + m * 2 + d, grp.h + m * 2 + d);
+        drawBase10(grp, cubeS);
+        grp.drawn = true;
+        a.finalizedUpTo = Math.max(a.finalizedUpTo, gi + 1);
+      }
+    }
   }
 
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(scatterCanvas, 0, 0);
   ctx.drawImage(settledCanvas, 0, 0);
+
+  // blocs en cours de fondu (dessinés sur le canvas principal avec alpha)
+  for (const grp of a.groups) {
+    if (!grp.drawn && grp.fadeAlpha !== undefined && grp.fadeAlpha < 1) {
+      ctx.save();
+      ctx.globalAlpha = grp.fadeAlpha;
+      drawBase10On(ctx, grp, cubeS);
+      ctx.restore();
+    }
+  }
 
   const firstFlight = Math.max(0, (doneWave + 1)) * a.waveSize;
   for (let i = firstFlight; i < a.launchedUpTo; i++) {
@@ -682,7 +708,10 @@ function drawOrganizing(now) {
     drawCube(ctx, x - cubeS * (k - 1) / 2, y - cubeS * (k - 1) / 2, cubeS, k);
   }
 
-  if (a.settledUpTo >= N && a.launchedUpTo >= N) {
+  // fin seulement quand tous les cubes sont posés ET tous les blocs
+  // gravés (fondus terminés)
+  const allDrawn = a.groups.every((g) => g.drawn || g.unitsOnly);
+  if (a.settledUpTo >= N && a.launchedUpTo >= N && allDrawn) {
     finishOrganise();
   }
 }
