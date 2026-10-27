@@ -518,6 +518,8 @@ function computeOrganisedLayout() {
       x: unitsStartX - m5, y: baseY - maxDiceH - m5, w: totalUnitsW + m5 * 2, h: maxDiceH + m5 * 2,
       label: String(u), strong: false, lastIdx: idx - 1, drawn: false,
       unitsOnly: true,
+      // les cubes unités restent dessinés : pas d'effacement ni de fondu
+      noErase: true,
     });
   }
 
@@ -673,10 +675,21 @@ function drawOrganizing(now) {
 
   // Finalisation en fondu : quand un groupe est complet, le bloc final
   // recouvre progressivement la construction (fondu ~400 ms).
+  // Les groupes « unitsOnly » (cubes unités) ne passent pas par le fondu :
+  // leurs cubes restent dessinés, aucun effacement ni remplacement.
   const FADE_MS = 400;
   for (let gi = 0; gi < a.groups.length; gi++) {
     const grp = a.groups[gi];
     if (grp.drawn) continue;
+    if (grp.noErase) {
+      // cadre des unités : tracé directement, cubes conservés
+      settledCtx.strokeStyle = "rgba(90, 50, 10, 0.8)";
+      settledCtx.lineWidth = Math.max(1.5, cubeS * 0.18);
+      settledCtx.strokeRect(grp.x, grp.y, grp.w, grp.h);
+      grp.drawn = true;
+      a.finalizedUpTo = Math.max(a.finalizedUpTo, gi + 1);
+      continue;
+    }
     if (grp.lastIdx < a.settledUpTo) {
       if (grp.fadeStart === undefined) grp.fadeStart = t;
       const alpha = Math.min(1, (t - grp.fadeStart) / FADE_MS);
