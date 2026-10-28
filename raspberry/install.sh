@@ -28,11 +28,9 @@ rsync -a --delete --exclude='.git' --exclude='raspberry' "${APP_DIR}/" "${SERVE_
 chown -R "${PI_USER}:${PI_USER}" "${SERVE_DIR}"
 
 echo "==> Configuration de lighttpd sur le port 8080"
-cat > /etc/lighttpd/conf-available/50-maths-apps.conf <<EOF
-server.port = 8080
-server.document-root = "${SERVE_DIR}"
-EOF
-ln -sf /etc/lighttpd/conf-available/50-maths-apps.conf /etc/lighttpd/conf-enabled/50-maths-apps.conf
+sed -i "s/^server.port[[:space:]]*=.*/server.port = 8080/" /etc/lighttpd/lighttpd.conf
+sed -i "s|^server.document-root[[:space:]]*=.*|server.document-root = \"${SERVE_DIR}\"|" /etc/lighttpd/lighttpd.conf
+rm -f /etc/lighttpd/conf-enabled/50-maths-apps.conf /etc/lighttpd/conf-available/50-maths-apps.conf
 
 echo "==> Configuration de la synchro automatique depuis GitHub"
 cat > /usr/local/bin/maths-apps-sync.sh <<EOF
