@@ -6,45 +6,66 @@
 <title>TRIO — jeu de calcul mental</title>
 <!-- Règles : 49 pions en carré 7×7 (couleurs et nombres du fichier Cartes Trio) ; une cible entre 1 et 30 est retournée (cibles ≥ 10 deux fois plus probables que les cibles < 10), trouver un maximum de TRIO — 3 nombres alignés côte à côte qui donnent la cible avec une multiplication et une addition — ou une soustraction. La grille et la cible ne changent que lors du clic sur « Nouvelle partie ». -->
 <style>
+  :root {
+    --bg:#040814; --panel:#0a1228; --line:#1b2a4d;
+    --neon:#3ef2ff; --violet:#9d5cff; --lime:#b8ff3e; --rose:#ff4d9e; --rouge:#ff3b3b;
+    --text:#cfe4ff; --dim:#7f9cc7;
+  }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; min-height: 100%; background: #eef4fb; font-family: "Segoe UI", system-ui, sans-serif; color: #1f3a5f; }
+  html, body { margin: 0; padding: 0; min-height: 100%; background: radial-gradient(1200px 700px at 70% -10%, #12204a 0%, var(--bg) 60%); font-family: "Segoe UI", system-ui, sans-serif; color: var(--text); }
   body { display: flex; flex-direction: column; align-items: center; padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
 
   #regles-haut {
     position: fixed; top: 10px; left: 10px; z-index: 30;
     max-width: 280px; max-height: 80vh; overflow-y: auto;
-    background: #f8fbff; border: 2px solid #b8cfe8; border-radius: 14px;
+    background: linear-gradient(180deg, rgba(23,37,74,.92), rgba(10,18,40,.92));
+    border: 1px solid #24386b; border-radius: 14px;
     padding: 12px 14px; font-size: .8rem; line-height: 1.45;
-    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    box-shadow: 0 0 24px rgba(62,242,255,.12);
   }
-  #regles-haut h2 { margin: 0 0 6px; color: #1a5276; font-size: .95rem; }
-  #regles-haut details summary { cursor: pointer; color: #e76f51; font-weight: 600; margin-top: 6px; }
+  #regles-haut h2 { margin: 0 0 6px; color: var(--neon); font-size: .95rem; text-shadow: 0 0 10px rgba(62,242,255,.5); }
+  #regles-haut details summary { cursor: pointer; color: var(--lime); font-weight: 600; margin-top: 6px; }
   #regles-haut .fermer-regles {
     display: block; margin-top: 8px; width: 100%; padding: 6px 0;
-    border: none; border-radius: 8px; background: #f7c948; color: #1a5276;
+    border: none; border-radius: 8px; background: linear-gradient(135deg, var(--neon), var(--lime)); color: #04121f;
     font-weight: 700; cursor: pointer;
   }
   #regles-haut[hidden] { display: none; }
   #btn-regles {
     position: fixed; top: 10px; left: 10px; z-index: 31;
-    padding: 6px 12px; border: 2px solid #b8cfe8; border-radius: 999px;
-    background: #f8fbff; color: #1a5276; font-size: .85rem; font-weight: 700;
-    cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    padding: 6px 12px; border: 1px solid #24386b; border-radius: 999px;
+    background: #0d1a36; color: var(--neon); font-size: .85rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 0 10px rgba(62,242,255,.18);
   }
+  #btn-retour {
+    position: fixed; top: 10px; right: 10px; z-index: 31;
+    display: block; text-decoration: none; text-align: center;
+    padding: 6px 12px; border: 1px solid #24386b; border-radius: 999px;
+    background: #0d1a36; color: var(--dim); font-size: .85rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 0 10px rgba(62,242,255,.1);
+    transition: color .15s, border-color .15s, box-shadow .15s;
+  }
+  #btn-retour:hover { color: var(--neon); border-color: var(--neon); box-shadow: 0 0 14px rgba(62,242,255,.4); }
 
   header { text-align: center; margin-bottom: 10px; }
-  h1 { margin: 0; color: #1a5276; font-size: 1.6rem; }
-  header p { margin: 6px 0 0; font-size: .95rem; }
+  h1 {
+    margin: 0; font-size: 1.6rem; letter-spacing: .06em;
+    background: linear-gradient(135deg, var(--neon), var(--lime));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(62,242,255,.45));
+  }
+  header p { margin: 6px 0 0; font-size: .95rem; color: var(--dim); }
 
   #scorebar {
     display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px;
-    font-size: .9rem; color: #1a5276; margin-bottom: 10px;
+    font-size: .9rem; color: var(--dim); margin-bottom: 10px;
   }
-  #scorebar b { color: #e76f51; font-size: 1.05rem; }
+  #scorebar b { color: var(--neon); font-size: 1.05rem; text-shadow: 0 0 8px rgba(62,242,255,.5); }
 
   #plateau {
-    background: #f8fbff; border: 2px solid #b8cfe8; border-radius: 14px;
-    padding: 14px; box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    background: linear-gradient(180deg, rgba(13,22,48,.85), rgba(6,11,26,.9));
+    border: 1px solid rgba(62,242,255,.12); border-radius: 14px;
+    padding: 14px; box-shadow: 0 0 44px rgba(62,242,255,.08), inset 0 0 60px rgba(10,20,50,.5);
     display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 720px;
   }
 
@@ -64,41 +85,41 @@
   #grille { display: flex; flex-direction: column; gap: 6px; }
   .ligne { display: flex; gap: 6px; }
   .pion {
-    width: 44px; height: 44px; border: none; border-radius: 8px;
-    background: #1a5276; color: #fff; font-size: 1.15rem; font-weight: 700;
-    cursor: pointer; transition: transform .1s, background .15s;
+    width: 44px; height: 44px; border: 1px solid #24386b; border-radius: 8px;
+    background: var(--panel); color: var(--text); font-size: 1.15rem; font-weight: 700;
+    cursor: pointer; transition: transform .1s, background .15s, border-color .15s, box-shadow .15s;
   }
   .pion:active { transform: scale(.92); }
-  .pion.actif { background: #f7c948; color: #1a5276; box-shadow: 0 0 0 3px #e76f5155; }
+  .pion.actif { border-color: var(--lime); box-shadow: 0 0 18px rgba(184,255,62,.7), inset 0 0 10px rgba(255,255,255,.25); }
 
   #cote {
     display: flex; flex-direction: column; align-items: center; gap: 10px;
     min-width: 130px; padding-top: 8px;
   }
   #expression {
-    min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: #1a5276;
+    min-height: 1.5em; font-size: 1.15rem; font-weight: 700; color: var(--text);
     text-align: center; white-space: nowrap;
   }
   #chip-resultat {
     width: 64px; height: 64px; border-radius: 50%;
-    border: 3px solid #b8cfe8; background: #f8fbff; color: #1a5276;
+    border: 3px solid #24386b; background: var(--panel); color: var(--text);
     font-size: 1.35rem; font-weight: 700; cursor: pointer;
-    transition: background .15s, border-color .15s, transform .1s;
+    transition: background .15s, border-color .15s, transform .1s, box-shadow .15s;
   }
   #chip-resultat:active { transform: scale(.92); }
-  #chip-resultat.actif { border-color: #e76f51; background: #f7c948; color: #1a5276; }
+  #chip-resultat.actif { border-color: var(--lime); color: var(--lime); box-shadow: 0 0 18px rgba(184,255,62,.45); }
   #chip-resultat[hidden] { display: none; }
   #ops { margin-top: 0; }
   button.op {
-    width: 52px; height: 52px; border: none; border-radius: 10px;
-    background: #1a5276; color: #fff; font-size: 1.5rem; font-weight: 700; cursor: pointer;
-    transition: background .15s, transform .1s;
+    width: 52px; height: 52px; border: 1px solid #24386b; border-radius: 10px;
+    background: var(--panel); color: var(--text); font-size: 1.5rem; font-weight: 700; cursor: pointer;
+    transition: background .15s, transform .1s, border-color .15s, box-shadow .15s;
   }
   button.op:active { transform: scale(.92); }
-  button.op:disabled { background: #b9cbde; cursor: default; }
-  button.op.actif { background: #e76f51; }
+  button.op:disabled { background: #0b142c; color: #3d5a8a; cursor: default; }
+  button.op.actif { background: linear-gradient(135deg, var(--neon), var(--lime)); color: #04121f; box-shadow: 0 0 16px rgba(62,242,255,.5); }
   #consigne {
-    margin: 0; font-size: .85rem; color: #6b87a8; text-align: center; max-width: 150px;
+    margin: 0; font-size: .85rem; color: var(--dim); text-align: center; max-width: 150px;
     min-height: 2.6em;
   }
 
@@ -108,53 +129,56 @@
   }
   #cible-grosse {
     width: 110px; height: 110px; border-radius: 50%;
-    border: 5px dashed #1a5276;
-    background: #2471a3; color: #fff;
+    border: 5px dashed var(--neon);
+    background: linear-gradient(135deg, rgba(62,242,255,.25), rgba(157,92,255,.25)); color: var(--text);
     font-size: 3.2rem; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 24px rgba(62,242,255,.25), inset 0 0 24px rgba(62,242,255,.1);
   }
   #cible-grosse.vide {
-    background: #7fa8c9; color: #ecf3f9; border-style: solid;
-    font-size: 2.2rem;
+    background: var(--panel); color: #3d5a8a; border-style: solid; border-color: #24386b;
+    font-size: 2.2rem; box-shadow: none;
   }
   #etiquette-cible {
-    font-size: .9rem; font-weight: 700; color: #1a5276;
+    font-size: .9rem; font-weight: 700; color: var(--neon);
   }
-  #chrono { margin: 0; font-size: .85rem; color: #6b87a8; text-align: center; }
+  #chrono { margin: 0; font-size: .85rem; color: var(--dim); text-align: center; }
 
   .boutons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
   button.action {
     font-size: 1.05rem; padding: 10px 22px; border: none; border-radius: 9px;
-    background: #e76f51; color: #fff; cursor: pointer; font-weight: 600;
+    background: linear-gradient(135deg, var(--neon), var(--lime)); color: #04121f; cursor: pointer; font-weight: 600;
+    box-shadow: 0 0 16px rgba(62,242,255,.45);
+    transition: box-shadow .15s, transform .12s;
   }
-  button.action:hover { background: #d45f3d; }
-  button.action:disabled { background: #b9cbde; cursor: default; }
-  button.secondaire { background: #f7c948; color: #1a5276; }
-  button.secondaire:hover { background: #e9b93b; }
+  button.action:hover { box-shadow: 0 0 24px rgba(62,242,255,.75); transform: translateY(-1px); }
+  button.action:disabled { background: #0b142c; color: #3d5a8a; box-shadow: none; cursor: default; transform: none; }
+  button.secondaire { background: transparent; color: var(--dim); border: 1px solid var(--line); box-shadow: none; }
+  button.secondaire:hover { color: var(--text); border-color: var(--neon); box-shadow: 0 0 12px rgba(62,242,255,.2); }
 
   #message {
     margin-top: 12px; padding: 10px 14px; border-radius: 10px;
     font-size: .95rem; display: none; width: 100%; text-align: center;
   }
-  #message.ok { display: block; background: #d1fae5; color: #065f46; }
-  #message.ko { display: block; background: #fee2e2; color: #b91c1c; }
+  #message.ok { display: block; background: rgba(184,255,62,.1); color: var(--lime); border: 1px solid rgba(184,255,62,.35); }
+  #message.ko { display: block; background: rgba(255,59,59,.1); color: var(--rouge); border: 1px solid rgba(255,59,59,.35); }
 
   #trios {
     margin-top: 16px; width: 100%;
-    background: #e4eefb; border: 2px dashed #b8cfe8; border-radius: 14px;
+    background: rgba(62,242,255,.04); border: 1px dashed #24386b; border-radius: 14px;
     padding: 12px 14px;
   }
-  #trios h2 { margin: 0 0 8px; color: #1a5276; font-size: 1rem; }
+  #trios h2 { margin: 0 0 8px; color: var(--neon); font-size: 1rem; text-shadow: 0 0 10px rgba(62,242,255,.4); }
   #liste-trios {
     display: flex; flex-wrap: wrap; gap: 8px;
   }
   .trio-gagne {
-    background: #d1fae5; color: #065f46; border-radius: 999px;
+    background: rgba(184,255,62,.12); color: var(--lime); border: 1px solid rgba(184,255,62,.4); border-radius: 999px;
     padding: 6px 14px; font-size: .95rem; font-weight: 700;
   }
-  #trios .vide { font-size: .85rem; color: #6b87a8; margin: 0; }
+  #trios .vide { font-size: .85rem; color: var(--dim); margin: 0; }
 
-  a.retour { margin-top: 16px; font-size: .9rem; color: #6b87a8; }
+  a.retour { margin-top: 16px; font-size: .9rem; color: var(--dim); }
 
   @media (max-width: 400px) {
     .pion { width: 38px; height: 38px; font-size: 1rem; }
@@ -163,6 +187,7 @@
 </head>
 <body>
 <button type="button" id="btn-regles" hidden>📖 Règles</button>
+<a id="btn-retour" href="../">⌂ Accueil</a>
 <div id="regles-haut">
   <h2>Règles</h2>
   Les 49 pions (nombres de 1 à 9, six couleurs comme dans le jeu) forment un grand carré de 7×7, disposés au hasard.
@@ -466,7 +491,7 @@
     ellipse.setAttribute('rx', rx);
     ellipse.setAttribute('ry', ry);
     ellipse.setAttribute('fill', 'none');
-    ellipse.setAttribute('stroke', '#e76f51');
+    ellipse.setAttribute('stroke', '#b8ff3e');
     ellipse.setAttribute('stroke-width', '5');
     ellipse.setAttribute('stroke-dasharray', '14 8');
     ellipse.setAttribute('stroke-linecap', 'round');
@@ -593,7 +618,7 @@
       var fin = document.createElement('p');
       fin.style.margin = '0';
       fin.style.fontWeight = '600';
-      fin.style.color = '#065f46';
+      fin.style.color = '#b8ff3e';
       fin.textContent = 'Plus aucune cible — ' + gagnes + ' TRIO' + (gagnes !== 1 ? 's' : '') + ' trouvé' + (gagnes !== 1 ? 's' : '') + ' au total.';
       actionsEl.appendChild(fin);
     }

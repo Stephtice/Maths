@@ -6,62 +6,81 @@
 <title>Organiser une collection de cubes</title>
 <!-- v1.2 -->
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fdf6ec; font-family: "Segoe UI", system-ui, sans-serif; }
+  :root {
+    --bg:#040814; --panel:#0a1228; --line:#1b2a4d;
+    --neon:#3ef2ff; --violet:#9d5cff; --lime:#b8ff3e; --rouge:#ff3b3b;
+    --text:#cfe4ff; --dim:#7f9cc7;
+  }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); font-family: "Segoe UI", system-ui, sans-serif; }
   #scene { position: absolute; inset: 0; display: block; }
+  #btn-retour {
+    position: fixed; top: 10px; right: 10px; z-index: 12;
+    display: block; text-decoration: none; text-align: center;
+    padding: 6px 12px; border: 1px solid #24386b; border-radius: 999px;
+    background: rgba(13,26,54,.9); color: var(--dim); font-size: .85rem; font-weight: 700;
+    cursor: pointer; box-shadow: 0 0 10px rgba(62,242,255,.1); backdrop-filter: blur(6px);
+    transition: color .15s, border-color .15s, box-shadow .15s;
+  }
+  #btn-retour:hover { color: var(--neon); border-color: var(--neon); box-shadow: 0 0 14px rgba(62,242,255,.4); }
   .overlay {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: rgba(60, 40, 20, 0.25); z-index: 10;
+    background: rgba(2, 5, 14, 0.7); z-index: 10;
   }
   .panel {
-    background: #fffdf8; border-radius: 14px; padding: 28px 34px; max-width: 480px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.35); text-align: center;
+    background: linear-gradient(180deg, rgba(23,37,74,.95), rgba(10,18,40,.95)); border: 1px solid #24386b; border-radius: 14px; padding: 28px 34px; max-width: 480px;
+    box-shadow: 0 0 44px rgba(62,242,255,.15), inset 0 0 40px rgba(10,20,50,.5); text-align: center;
   }
-  .panel h2 { margin: 0 0 10px; color: #7f4f24; font-size: 1.25rem; }
-  .panel p { margin: 6px 0; color: #5b4636; line-height: 1.45; }
+  .panel h2 { margin: 0 0 10px; color: var(--neon); font-size: 1.25rem; text-shadow: 0 0 12px rgba(62,242,255,.5); }
+  .panel p { margin: 6px 0; color: var(--text); line-height: 1.45; }
   .panel button {
     margin-top: 14px; font-size: 1.05rem; padding: 10px 26px; border: none; border-radius: 9px;
-    background: #e76f51; color: #fff; cursor: pointer; font-weight: 600;
+    background: linear-gradient(135deg, var(--neon), var(--lime)); color: #04121f; cursor: pointer; font-weight: 600;
+    box-shadow: 0 0 16px rgba(62,242,255,.45);
+    transition: box-shadow .15s, transform .12s;
   }
-  .panel button:hover { background: #d45f3d; }
+  .panel button:hover { box-shadow: 0 0 24px rgba(62,242,255,.75); transform: translateY(-1px); }
   #askbar {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 5;
     display: flex; align-items: center; justify-content: center; gap: 10px;
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(255, 253, 248, 0.92); border-top: 2px solid #e0c9a6;
-    box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+    background: rgba(8, 14, 32, 0.92); border-top: 1px solid #24386b;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
     flex-wrap: wrap;
   }
-  #askbar label { color: #7f4f24; font-weight: 600; font-size: 1.05rem; }
+  #askbar label { color: var(--text); font-weight: 600; font-size: 1.05rem; }
   #askbar input {
     font-size: 1.2rem; text-align: center; width: 140px; padding: 8px;
-    border: 2px solid #e0c9a6; border-radius: 8px; outline: none;
+    border: 2px solid #24386b; border-radius: 8px; outline: none;
+    background: var(--panel); color: var(--text);
   }
-  #askbar input:focus { border-color: #e76f51; }
+  #askbar input:focus { border-color: var(--neon); box-shadow: 0 0 12px rgba(62,242,255,.35); }
   #askbar button {
     font-size: 1.05rem; padding: 10px 22px; border: none; border-radius: 9px;
-    background: #2a9d8f; color: #fff; cursor: pointer; font-weight: 600;
+    background: linear-gradient(135deg, var(--neon), var(--lime)); color: #04121f; cursor: pointer; font-weight: 600;
+    box-shadow: 0 0 12px rgba(62,242,255,.3);
   }
-  #askbar button:hover { background: #21867a; }
+  #askbar button:hover { box-shadow: 0 0 20px rgba(62,242,255,.6); }
   #status {
     position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-    background: rgba(255, 253, 248, 0.92); border-radius: 10px; padding: 8px 18px;
-    color: #5b4636; font-size: 0.95rem; z-index: 5; max-width: 92%; text-align: center;
-    border: 1px solid #e0c9a6;
+    background: rgba(8, 14, 32, 0.92); border-radius: 10px; padding: 8px 18px;
+    color: var(--text); font-size: 0.95rem; z-index: 5; max-width: 92%; text-align: center;
+    border: 1px solid #24386b;
   }
-  .big { font-size: 1.6rem; font-weight: 700; color: #7f4f24; }
-  .ok { color: #2a9d8f; font-weight: 700; }
-  .ko { color: #c0392b; font-weight: 700; }
+  .big { font-size: 1.6rem; font-weight: 700; color: var(--neon); text-shadow: 0 0 10px rgba(62,242,255,.5); }
+  .ok { color: var(--lime); font-weight: 700; }
+  .ko { color: var(--rouge); font-weight: 700; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <canvas id="scene"></canvas>
+<a id="btn-retour" href="../" title="Retour aux applis">⌂ Accueil</a>
 <div id="status" class="hidden"></div>
 <div id="askbar" class="hidden">
   <label id="askLabel"></label>
   <input id="askInput" type="number" min="0" inputmode="numeric" value="">
   <button id="askGo">Valider</button>
-  <button id="askSkip" style="background:#b0a08a;">Passer</button>
+  <button id="askSkip" style="background:transparent;color:#7f9cc7;box-shadow:none;">Passer</button>
 </div>
 <div id="modal" class="overlay hidden">
   <div class="panel" id="panelContent"></div>
@@ -77,11 +96,11 @@ window.addEventListener('error', function (e) {
   }
 });
 
-const BG = "#fdf6ec";
-const CUBE = "#f7c948";
-const CUBE_DARK = "#d9a520";
-const CUBE_LIGHT = "#ffe9a0";
-const STROKE = "rgba(120, 80, 10, 0.45)";
+const BG = "#040814";
+const CUBE = "#3ef2ff";
+const CUBE_DARK = "#1a8fb5";
+const CUBE_LIGHT = "#9df6ff";
+const STROKE = "rgba(62, 242, 255, 0.4)";
 
 const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
@@ -178,7 +197,7 @@ function askMax() {
     <p style="margin-top:14px;">… ou choisis un nombre maximum libre&nbsp;:</p>
     <input id="maxInput" type="number" min="1" max="100000" inputmode="numeric" placeholder="Ex. 250">
     <p class="err" id="maxErr"></p>
-    <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin:12px 0; color:#5b4636; cursor:pointer;">
+    <label style="display:flex; align-items:center; gap:8px; justify-content:center; margin:12px 0; color:#cfe4ff; cursor:pointer;">
       <input id="labelsChk" type="checkbox" style="width:18px; height:18px;">
       Afficher la valeur des blocs (1 000, 100, 10…)
     </label>
@@ -208,7 +227,7 @@ function askMax() {
     btn.style.margin = "0";
     btn.style.fontSize = "0.95rem";
     btn.style.padding = "8px 14px";
-    btn.style.background = "#8ab17d";
+    btn.style.background = "linear-gradient(135deg,#3ef2ff,#b8ff3e)"; btn.style.color = "#04121f";
     btn.onclick = () => go(parseInt(btn.dataset.max, 10));
   }
   // pré-coche la case selon le dernier choix sauvegardé
@@ -218,7 +237,7 @@ function askMax() {
   input.style.textAlign = "center";
   input.style.width = "140px";
   input.style.padding = "8px";
-  input.style.border = "2px solid #e0c9a6";
+  input.style.border = "2px solid #24386b"; input.style.background = "#0a1228"; input.style.color = "#cfe4ff";
   input.style.borderRadius = "8px";
   input.style.outline = "none";
   document.getElementById("maxGo").onclick = () => {
@@ -312,11 +331,11 @@ function askEstimate(step) {
   askGo.onclick = () => {
     const v = parseInt(askInput.value, 10);
     if (!Number.isInteger(v) || v < 0) {
-      askInput.style.borderColor = "#c0392b";
+      askInput.style.borderColor = "#ff3b3b";
       askInput.placeholder = "Nombre entier";
       return;
     }
-    askInput.style.borderColor = "#e0c9a6";
+    askInput.style.borderColor = "#24386b";
     if (step === 1) {
       firstEstimate = v;
       askbar.classList.add("hidden");
@@ -603,7 +622,7 @@ function drawBase10On(g2, grp, s) {
       g2.beginPath(); g2.moveTo(x + p, y); g2.lineTo(x + p, y + w); g2.stroke();
       g2.beginPath(); g2.moveTo(x, y + p); g2.lineTo(x + w, y + p); g2.stroke();
     }
-    g2.strokeStyle = "rgba(90, 50, 10, 0.8)";
+    g2.strokeStyle = "rgba(4, 8, 20, 0.9)";
     g2.lineWidth = lw;
     g2.strokeRect(x, y, w, w);
   } else {
@@ -627,7 +646,7 @@ function drawBase10On(g2, grp, s) {
         g2.beginPath(); g2.moveTo(grp.x + p, grp.y); g2.lineTo(grp.x + p, grp.y + grp.h); g2.stroke();
       }
     }
-    g2.strokeStyle = "rgba(90, 50, 10, 0.8)";
+    g2.strokeStyle = "rgba(4, 8, 20, 0.9)";
     g2.lineWidth = lw;
     g2.strokeRect(grp.x, grp.y, grp.w, grp.h);
   }
@@ -635,7 +654,7 @@ function drawBase10On(g2, grp, s) {
   // étiquette (masquée dans la variante « sans valeurs »)
   if (showLabels) {
     const fs = Math.max(11 * DPR, Math.min(s * 3, 24 * DPR));
-    g2.fillStyle = grp.strong ? "#7f4f24" : "#8a6a4a";
+    g2.fillStyle = grp.strong ? "#3ef2ff" : "#9d5cff";
     g2.textAlign = "center";
     g2.font = `${grp.strong ? "bold " : ""}${fs}px sans-serif`;
     const labelY = grp.kind === "thousand" ? grp.y + grp.h + Math.max(10, s) : grp.y + grp.h + Math.max(10, s * 1.4);
@@ -683,7 +702,7 @@ function drawOrganizing(now) {
     if (grp.drawn) continue;
     if (grp.noErase) {
       // cadre des unités : tracé directement, cubes conservés
-      settledCtx.strokeStyle = "rgba(90, 50, 10, 0.8)";
+      settledCtx.strokeStyle = "rgba(4, 8, 20, 0.9)";
       settledCtx.lineWidth = Math.max(1.5, cubeS * 0.18);
       settledCtx.strokeRect(grp.x, grp.y, grp.w, grp.h);
       grp.drawn = true;
@@ -764,10 +783,10 @@ function showFinalFeedback(v) {
          ? `C'est exactement le bon nombre&nbsp;! Il y a bien <b>${fmt(N)}</b> cubes.`
          : `Il y a en réalité <b>${fmt(N)}</b> cubes, soit ${diff > 0 ? `${fmt(diff)} de moins que ta réponse` : `${fmt(-diff)} de plus que ta réponse`}.`}</p>`;
   const estimHTML = firstEstimate === null
-    ? `<p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
+    ? `<p style="border-top:1px solid #24386b; padding-top:10px; margin-top:12px;">
          Pas d'estimation notée avant l'organisation.
        </p>`
-    : `<p style="border-top:1px solid #e0c9a6; padding-top:10px; margin-top:12px;">
+    : `<p style="border-top:1px solid #24386b; padding-top:10px; margin-top:12px;">
          Ton estimation <b>avant</b> l'organisation était&nbsp;: <b>${fmt(firstEstimate)}</b>
          (${firstEstimate === N ? "déjà exacte" : "à " + fmt(Math.abs(firstEstimate - N)) + " cubes près"}).
        </p>`;

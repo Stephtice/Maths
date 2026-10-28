@@ -185,6 +185,14 @@ h1 .volt{color:var(--lime); text-shadow:0 0 6px var(--lime),0 0 24px var(--lime)
   transition:box-shadow .15s, transform .12s;
 }
 .btn-rules:hover{box-shadow:0 0 22px rgba(62,242,255,.7); transform:translateY(-1px)}
+.btn-retour{
+  position:fixed; top:12px; right:12px; z-index:40; text-decoration:none;
+  border:1px solid var(--line); border-radius:999px; padding:8px 16px;
+  background:rgba(8,14,32,.9); color:#7f9cc7; font-weight:800; font-size:.82rem;
+  letter-spacing:.08em; cursor:pointer; backdrop-filter:blur(6px);
+  transition:box-shadow .15s, color .15s, border-color .15s, transform .12s;
+}
+.btn-retour:hover{color:var(--neon); border-color:var(--neon); box-shadow:0 0 18px rgba(62,242,255,.5); transform:translateY(-1px)}
 #panel-rules{
   position:fixed; top:56px; left:12px; z-index:41;
   max-width:300px; max-height:78vh; overflow-y:auto;
@@ -241,6 +249,7 @@ kbd{
 <canvas id="sparkCanvas"></canvas>
 <div class="wrap">
   <button class="btn-rules" id="btnHelp">📖 Règles</button>
+  <a class="btn-retour" href="../">⌂ Accueil</a>
 
   <div id="panel-rules" hidden>
     <h2>⚡ Règles du jeu</h2>

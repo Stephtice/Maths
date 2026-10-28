@@ -31,6 +31,15 @@
     background:#0d1a36; color:var(--neon); font-size:.85rem; font-weight:700;
     cursor:pointer; box-shadow:0 0 10px rgba(62,242,255,.18);
   }
+  #btn-retour {
+    position:fixed; top:10px; right:10px; z-index:31;
+    display:block; text-decoration:none; text-align:center;
+    padding:6px 14px; border:1px solid #24386b; border-radius:999px;
+    background:#0d1a36; color:var(--dim); font-size:.85rem; font-weight:700;
+    cursor:pointer; box-shadow:0 0 10px rgba(62,242,255,.1);
+    transition:color .15s, border-color .15s, box-shadow .15s;
+  }
+  #btn-retour:hover { color:var(--neon); border-color:var(--neon); box-shadow:0 0 14px rgba(62,242,255,.4); }
   #regles {
     position:fixed; top:10px; left:10px; z-index:30;
     max-width:300px; max-height:82vh; overflow-y:auto;
@@ -182,6 +191,7 @@
 <body>
 
 <button id="btn-regles">⚡ Règles</button>
+<a id="btn-retour" href="../" title="Retour aux applis">⌂ Accueil</a>
 <div id="regles" hidden>
   <h2>⚡ Règles</h2>
   <p>Chaque jeu contient <b>21 cartes de 5 calculs</b>. Deux cartes quelconques ont toujours <b>exactement un seul résultat en commun</b>.</p>
