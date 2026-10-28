@@ -121,8 +121,19 @@
     font-size:1.25rem; font-weight:700;
     transition:background .15s, border-color .15s, color .15s, box-shadow .15s, transform .1s;
   }
-  .carte.calc .slot { color:var(--text); }
+  .carte.calc .slot { cursor:pointer; color:var(--text); }
+  .carte.calc .slot:hover { border-color:var(--neon); box-shadow:0 0 10px rgba(62,242,255,.25); }
+  .carte.calc .slot:active { transform:scale(.95); }
   .slot .val { opacity:.35; }
+
+  .slot.choisi {
+    color:var(--neon); border-color:var(--neon); background:rgba(62,242,255,.1);
+    box-shadow:0 0 16px rgba(62,242,255,.45);
+  }
+  .carte.res .slot.choisi {
+    color:var(--violet); border-color:var(--violet); background:rgba(157,92,255,.1);
+    box-shadow:0 0 16px rgba(157,92,255,.45);
+  }
 
   .carte.res .slot { cursor:pointer; color:#e6d9ff; }
   .carte.res .slot:hover { border-color:var(--violet); box-shadow:0 0 10px rgba(157,92,255,.25); }
@@ -174,16 +185,16 @@
 <div id="regles" hidden>
   <h2>⚡ Règles</h2>
   <p>Chaque jeu contient <b>21 cartes de 5 calculs</b>. Deux cartes quelconques ont toujours <b>exactement un seul résultat en commun</b>.</p>
-  <p>Une carte <b>CALCULS</b> et une carte <b>RÉSULTATS</b> sont posées côte à côte : clique sur l'unique résultat de la carte RÉSULTATS qui correspond à l'un des calculs de la carte CALCULS.</p>
-  <p>Le fil tendu ⚡ entre les deux cartes confirme la bonne réponse. Une erreur fait disjoncter le circuit&nbsp;!</p>
+  <p>Une carte <b>CALCULS</b> et une carte <b>RÉSULTATS</b> sont posées côte à côte : clique d'abord sur <b>un calcul</b> de la carte CALCULS, puis sur <b>sa réponse</b> dans la carte RÉSULTATS. On valide si les deux vont ensemble&nbsp;!</p>
+  <p>L'arc électrique ⚡ entre les deux confirme la bonne paire. Une erreur fait disjoncter le circuit&nbsp;!</p>
   <p><b>Mode Éclair</b> : trouve un maximum de paires en 60&nbsp;s. <b>Mode Libre</b> : joue sans chronomètre et bats ton record de série.</p>
-  <p>Six jeux progressifs (ceintures) : chaque jeu n'utilise que des tables déjà travaillées, et fait réviser les précédentes.</p>
+  <p>Six jeux progressifs (ceintures) : chaque jeu n'utilise que des tables déjà travaillées, et fait réviser les précédentes. La dernière version, <b>Toutes les tables</b>, mélange les tables 2 à 10 en révision générale.</p>
   <button class="fermer" id="fermer-regles">Compris ⚡</button>
 </div>
 
 <header>
   <h1>⚡ DOBBLE ÉCLAIR ⚡</h1>
-  <p>Trouve l'unique résultat commun entre les deux cartes — avant que le courant ne saute&nbsp;!</p>
+  <p>Clique sur un calcul, puis sur sa réponse&nbsp;: on valide si les deux vont ensemble&nbsp;!</p>
 </header>
 
 <div id="jeux" role="tablist" aria-label="Choix du jeu"></div>
@@ -223,7 +234,7 @@
 
 <footer>
   Structure exacte du Dobble&nbsp;: 21 cartes de 5 calculs, 21 résultats, chaque résultat sur 5 cartes, et toujours un seul résultat commun entre deux cartes.
-  Progression en ceintures&nbsp;: tables 0, 1, 2 et 10 · table de 5 · carrés · tables 3 et 4 · table de 6 · tables 7, 8 et 9.
+  Progression en ceintures&nbsp;: tables 0, 1, 2 et 10 · table de 5 · carrés · tables 3 et 4 · table de 6 · tables 7, 8 et 9 · toutes les tables (révision générale).
 </footer>
 
 <svg id="arc" aria-hidden="true"></svg>
@@ -276,7 +287,10 @@
       valeurs: [0,5,6,10,12,15,18,21,24,25,27,28,30,35,36,42,45,48,50,54,60] },
     { nom: "Jeu 6", ceinture: "Tables 7, 8 et 9",
       tables: [0,1,2,3,4,5,6,7,8,9,10], carres: true,
-      valeurs: [7,8,14,16,21,24,28,32,35,40,42,48,49,56,63,64,70,72,80,81,90] }
+      valeurs: [7,8,14,16,21,24,28,32,35,40,42,48,49,56,63,64,70,72,80,81,90] },
+    { nom: "Toutes les tables", ceinture: "Révision générale 2 à 10",
+      tables: [0,1,2,3,4,5,6,7,8,9,10], carres: true,
+      valeurs: [6,12,15,18,20,21,24,27,28,30,35,36,40,42,45,48,54,56,63,72,81] }
   ];
 
   function poolCalculs(v, jeu) {
@@ -324,6 +338,7 @@
   var el = function (id) { return document.getElementById(id); };
   var etat = {
     jeuIx: 0, cartes: null, cA: -1, cB: -1, commun: -1,
+    calcChoisi: -1, resChoisi: -1,
     score: 0, serie: 0, record: 0,
     eclair: false, tempsRestant: 0, timerId: null, bloque: false
   };
@@ -372,6 +387,8 @@
     });
     etat.commun = communs[0].point;
     etat.bloque = false;
+    etat.calcChoisi = -1;
+    etat.resChoisi = -1;
 
     var ordreB = shuffle(pb.slice());
     var slotsCalc = el("carte-calc").querySelectorAll(".slot");
@@ -395,11 +412,50 @@
     }
   }
 
-  function verifier(slot) {
+  function choisirCalcul(i) {
     if (etat.bloque) return;
-    var ok = parseInt(slot.dataset.point, 10) === etat.commun;
-    var v = el("verdict");
     var slotsCalc = el("carte-calc").querySelectorAll(".slot");
+    var d = slotsCalc[i];
+    if (d.classList.contains("calc-bon")) return;
+    if (etat.calcChoisi >= 0) slotsCalc[etat.calcChoisi].classList.remove("choisi");
+    if (etat.calcChoisi === i) {
+      etat.calcChoisi = -1;
+      return;
+    }
+    etat.calcChoisi = i;
+    d.classList.add("choisi");
+    if (etat.resChoisi < 0) {
+      var v = el("verdict");
+      if (v.className === "" || v.className === "ko") {
+        v.textContent = "Calcul sélectionné — clique maintenant sur sa réponse dans RÉSULTATS…";
+        v.className = "";
+      }
+    }
+  }
+
+  function choisirResultat(slot, i) {
+    if (etat.bloque) return;
+    var v = el("verdict");
+    if (etat.calcChoisi < 0) {
+      v.textContent = "Choisis d'abord un calcul dans la carte CALCULS !";
+      v.className = "ko";
+      el("carte-calc").classList.add("buzz");
+      setTimeout(function () { el("carte-calc").classList.remove("buzz"); }, 320);
+      return;
+    }
+    if (etat.resChoisi >= 0) {
+      el("carte-res").querySelectorAll(".slot")[etat.resChoisi].classList.remove("choisi");
+    }
+    etat.resChoisi = i;
+    slot.classList.add("choisi");
+    verifier(slot);
+  }
+
+  function verifier(slot) {
+    var slotsCalc = el("carte-calc").querySelectorAll(".slot");
+    var calc = etat.cartes[etat.cA][etat.calcChoisi];
+    var ok = parseInt(slot.dataset.point, 10) === calc.point;
+    var v = el("verdict");
 
     if (ok) {
       etat.bloque = true;
@@ -409,16 +465,15 @@
         etat.record = etat.serie;
         if (!etat.eclair) ecrireRecord(etat.jeuIx, etat.record);
       }
+      slotsCalc[etat.calcChoisi].classList.remove("choisi");
+      slotsCalc[etat.calcChoisi].classList.add("calc-bon");
+      slot.classList.remove("choisi");
       slot.classList.add("bon");
-      var pa = etat.cartes[etat.cA];
-      for (var i = 0; i < pa.length; i++) {
-        if (pa[i].point === etat.commun) slotsCalc[i].classList.add("calc-bon");
-      }
       el("carte-calc").classList.add("gagnee");
       el("carte-res").classList.add("gagnee");
-      v.textContent = "⚡ " + pa[pa.findIndex(function (s) { return s.point === etat.commun; })].val + " trouvé ! Le courant passe.";
+      v.textContent = "⚡ " + calc.calc[0] + " × " + calc.calc[1] + " = " + calc.val + " — le courant passe !";
       v.className = "ok";
-      tracerArc(slot, slotsCalc[pa.findIndex(function (s) { return s.point === etat.commun; })]);
+      tracerArc(slot, slotsCalc[etat.calcChoisi]);
       majScorebar();
       setTimeout(function () {
         if (etat.eclair && etat.tempsRestant <= 0) return;
@@ -426,11 +481,13 @@
       }, 1100);
     } else {
       etat.serie = 0;
+      slot.classList.remove("choisi");
       slot.classList.add("mauvais");
       el("carte-res").classList.add("buzz");
       setTimeout(function () { el("carte-res").classList.remove("buzz"); }, 320);
-      v.textContent = "Disjoncté ! Ce résultat n'est pas sur la carte CALCULS…";
+      v.textContent = "Disjoncté ! " + calc.calc[0] + " × " + calc.calc[1] + " = " + calc.val + ", pas " + slot.textContent + "…";
       v.className = "ko";
+      etat.resChoisi = -1;
       majScorebar();
     }
   }
@@ -526,9 +583,13 @@
 
   /* ---------- Démarrage ---------- */
   construireBoutonsJeux();
+  el("carte-calc").addEventListener("click", function (e) {
+    var slot = e.target.closest(".slot");
+    if (slot) choisirCalcul(parseInt(slot.dataset.i, 10));
+  });
   el("carte-res").addEventListener("click", function (e) {
     var slot = e.target.closest(".slot");
-    if (slot && slot.dataset.point !== undefined) verifier(slot);
+    if (slot) choisirResultat(slot, parseInt(slot.dataset.i, 10));
   });
   el("btn-nouvelle").addEventListener("click", function () { nouvellePaire(); });
   el("btn-eclair").addEventListener("click", demarrerEclair);
