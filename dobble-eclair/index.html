@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DOBBLE ÉCLAIR — tables de multiplication</title>
+<!-- Règle d'après le document « Dobble des tables de multiplication » : chaque jeu contient 21 cartes
+     de 5 calculs ; deux cartes quelconques partagent exactement UN seul résultat commun.
+     Structure : plan projectif d'ordre 4 (21 points-résultats, 21 lignes-cartes, 5 points par ligne).
+     Ici : une carte CALCULS et une carte RÉSULTATS sont posées côte à côte ; clique sur l'unique
+     résultat de la carte RÉSULTATS qui correspond à un calcul de la carte CALCULS. -->
+<style>
+  :root {
+    --bg:#040814; --panel:#0a1228; --line:#1b2a4d;
+    --neon:#3ef2ff; --violet:#9d5cff; --lime:#b8ff3e; --rose:#ff4d9e; --rouge:#ff3b3b;
+    --text:#cfe4ff; --dim:#7f9cc7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; min-height:100%; }
+  body {
+    background:radial-gradient(1200px 700px at 70% -10%, #12204a 0%, var(--bg) 60%);
+    font-family:"Segoe UI", system-ui, sans-serif;
+    color:var(--text);
+    display:flex; flex-direction:column; align-items:center;
+    padding:14px 12px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  #btn-regles {
+    position:fixed; top:10px; left:10px; z-index:31;
+    padding:6px 14px; border:1px solid #24386b; border-radius:999px;
+    background:#0d1a36; color:var(--neon); font-size:.85rem; font-weight:700;
+    cursor:pointer; box-shadow:0 0 10px rgba(62,242,255,.18);
+  }
+  #regles {
+    position:fixed; top:10px; left:10px; z-index:30;
+    max-width:300px; max-height:82vh; overflow-y:auto;
+    background:linear-gradient(180deg, rgba(23,37,74,.92), rgba(10,18,40,.92));
+    border:1px solid #24386b; border-radius:12px;
+    padding:14px 16px; font-size:.82rem; line-height:1.5; color:var(--text);
+    box-shadow:0 0 24px rgba(62,242,255,.12);
+  }
+  #regles h2 { margin:0 0 8px; font-size:1rem; color:var(--neon); text-shadow:0 0 10px rgba(62,242,255,.5); }
+  #regles b { color:var(--lime); }
+  #regles .fermer {
+    display:block; margin-top:10px; width:100%; padding:7px 0;
+    border:none; border-radius:8px; cursor:pointer;
+    background:linear-gradient(135deg, var(--neon), var(--lime)); color:#04121f; font-weight:700;
+  }
+  #regles[hidden] { display:none; }
+
+  header { text-align:center; margin:34px 0 12px; }
+  h1 {
+    margin:0; font-size:1.7rem; letter-spacing:.06em;
+    background:linear-gradient(135deg, var(--neon), var(--lime));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 14px rgba(62,242,255,.45));
+  }
+  header p { margin:6px 0 0; font-size:.92rem; color:var(--dim); }
+
+  #jeux {
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:center;
+    margin:12px 0 4px; max-width:760px;
+  }
+  #jeux button {
+    border:1px solid var(--line); border-radius:999px;
+    background:var(--panel); color:var(--dim);
+    padding:7px 13px; font-size:.82rem; font-weight:700; cursor:pointer;
+    transition:box-shadow .15s, color .15s, border-color .15s;
+  }
+  #jeux button small { display:block; font-weight:400; font-size:.68rem; margin-top:1px; }
+  #jeux button:hover { color:var(--text); }
+  #jeux button.actif {
+    color:#04121f; border-color:transparent;
+    background:linear-gradient(135deg, var(--neon), var(--lime));
+    box-shadow:0 0 16px rgba(62,242,255,.5);
+  }
+  #jeux button.actif small { color:#0a3a2a; }
+
+  #scorebar {
+    display:flex; flex-wrap:wrap; justify-content:center; gap:6px 18px;
+    margin:10px 0 4px; font-size:.9rem; color:var(--dim);
+  }
+  #scorebar b { color:var(--neon); font-size:1.05rem; text-shadow:0 0 8px rgba(62,242,255,.5); }
+  #scorebar .lime { color:var(--lime); text-shadow:0 0 8px rgba(184,255,62,.5); }
+  #scorebar .temps { color:var(--rose); text-shadow:0 0 8px rgba(255,77,158,.5); }
+
+  #plateau {
+    width:100%; max-width:740px;
+    background:linear-gradient(180deg, rgba(13,22,48,.85), rgba(6,11,26,.9));
+    border:1px solid rgba(62,242,255,.12); border-radius:16px;
+    padding:18px 16px 16px;
+    box-shadow:0 0 0 1px rgba(62,242,255,.06), 0 0 44px rgba(62,242,255,.08), inset 0 0 60px rgba(10,20,50,.5);
+  }
+
+  #duo { display:flex; flex-wrap:wrap; gap:16px; justify-content:center; }
+
+  .carte {
+    flex:1 1 260px; max-width:320px;
+    border-radius:14px; padding:12px 12px 14px;
+    background:linear-gradient(180deg, rgba(16,26,54,.8), rgba(8,14,32,.8));
+    border:1px solid var(--line);
+    box-shadow:0 8px 30px rgba(0,0,0,.45);
+    display:flex; flex-direction:column; gap:8px;
+    transition:border-color .25s, box-shadow .25s;
+  }
+  .carte h3 {
+    margin:0 0 2px; font-size:.78rem; letter-spacing:.14em; text-align:center;
+    color:var(--dim); font-weight:700;
+  }
+  .carte.calc { border-color:rgba(62,242,255,.35); box-shadow:0 0 18px rgba(62,242,255,.12), inset 0 0 24px rgba(62,242,255,.04); }
+  .carte.calc h3 { color:var(--neon); text-shadow:0 0 8px rgba(62,242,255,.5); }
+  .carte.res { border-color:rgba(157,92,255,.35); box-shadow:0 0 18px rgba(157,92,255,.12), inset 0 0 24px rgba(157,92,255,.04); }
+  .carte.res h3 { color:var(--violet); text-shadow:0 0 8px rgba(157,92,255,.5); }
+  .carte.buzz { animation:buzz .3s; }
+  .carte.gagnee { border-color:var(--lime); box-shadow:0 0 26px rgba(184,255,62,.35), inset 0 0 24px rgba(184,255,62,.08); }
+
+  .slot {
+    display:flex; align-items:center; justify-content:center;
+    min-height:46px; border-radius:10px;
+    background:rgba(62,242,255,.04); border:1px solid #1d2f5c;
+    font-size:1.25rem; font-weight:700;
+    transition:background .15s, border-color .15s, color .15s, box-shadow .15s, transform .1s;
+  }
+  .carte.calc .slot { color:var(--text); }
+  .slot .val { opacity:.35; }
+
+  .carte.res .slot { cursor:pointer; color:#e6d9ff; }
+  .carte.res .slot:hover { border-color:var(--violet); box-shadow:0 0 10px rgba(157,92,255,.25); }
+  .carte.res .slot:active { transform:scale(.95); }
+  .slot.bon {
+    color:#04121f; border-color:transparent;
+    background:linear-gradient(135deg, var(--neon), var(--lime));
+    box-shadow:0 0 22px rgba(184,255,62,.6);
+    animation:pulse .5s;
+  }
+  .slot.calc-bon {
+    color:var(--lime); border-color:rgba(184,255,62,.6);
+    background:rgba(184,255,62,.08); box-shadow:0 0 16px rgba(184,255,62,.3);
+    animation:pulse .5s;
+  }
+  .slot.mauvais { border-color:var(--rouge); background:rgba(255,59,59,.12); animation:buzz .3s; }
+
+  @keyframes buzz { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+
+  #verdict {
+    min-height:1.5em; margin:12px 2px 0; text-align:center;
+    font-size:.95rem; font-weight:700; color:var(--dim);
+  }
+  #verdict.ok { color:var(--lime); text-shadow:0 0 10px rgba(184,255,62,.6); }
+  #verdict.ko { color:var(--rouge); text-shadow:0 0 10px rgba(255,59,59,.6); }
+
+  #actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:12px; }
+  .btn {
+    border:none; border-radius:10px; padding:10px 18px; font-size:.85rem; font-weight:700;
+    color:#04121f; cursor:pointer;
+    background:linear-gradient(135deg, var(--neon), var(--lime));
+    box-shadow:0 0 16px rgba(62,242,255,.5);
+    transition:transform .12s, box-shadow .12s;
+  }
+  .btn:hover { transform:translateY(-1px); box-shadow:0 0 24px rgba(62,242,255,.8); }
+  .btn.ghost { background:transparent; color:var(--dim); box-shadow:none; border:1px solid var(--line); }
+  .btn.ghost:hover { color:var(--text); border-color:var(--neon); }
+  .btn:disabled { opacity:.45; cursor:default; transform:none; }
+
+  #arc { position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:40; }
+
+  footer { margin-top:22px; font-size:.75rem; color:#3d5a8a; text-align:center; max-width:640px; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<button id="btn-regles">⚡ Règles</button>
+<div id="regles" hidden>
+  <h2>⚡ Règles</h2>
+  <p>Chaque jeu contient <b>21 cartes de 5 calculs</b>. Deux cartes quelconques ont toujours <b>exactement un seul résultat en commun</b>.</p>
+  <p>Une carte <b>CALCULS</b> et une carte <b>RÉSULTATS</b> sont posées côte à côte : clique sur l'unique résultat de la carte RÉSULTATS qui correspond à l'un des calculs de la carte CALCULS.</p>
+  <p>Le fil tendu ⚡ entre les deux cartes confirme la bonne réponse. Une erreur fait disjoncter le circuit&nbsp;!</p>
+  <p><b>Mode Éclair</b> : trouve un maximum de paires en 60&nbsp;s. <b>Mode Libre</b> : joue sans chronomètre et bats ton record de série.</p>
+  <p>Six jeux progressifs (ceintures) : chaque jeu n'utilise que des tables déjà travaillées, et fait réviser les précédentes.</p>
+  <button class="fermer" id="fermer-regles">Compris ⚡</button>
+</div>
+
+<header>
+  <h1>⚡ DOBBLE ÉCLAIR ⚡</h1>
+  <p>Trouve l'unique résultat commun entre les deux cartes — avant que le courant ne saute&nbsp;!</p>
+</header>
+
+<div id="jeux" role="tablist" aria-label="Choix du jeu"></div>
+
+<div id="scorebar">
+  <span>Score&nbsp;: <b id="score">0</b></span>
+  <span>Série&nbsp;: <b id="serie">0</b></span>
+  <span class="lime">Record&nbsp;: <b id="record" class="lime">0</b></span>
+  <span id="ligne-temps" hidden><span class="temps">⏱ <b id="temps" class="temps">60</b>&nbsp;s</span></span>
+</div>
+
+<main id="plateau">
+  <div id="duo">
+    <section class="carte calc" id="carte-calc" aria-label="Carte calculs">
+      <h3>CALCULS</h3>
+      <div class="slot" data-i="0"></div>
+      <div class="slot" data-i="1"></div>
+      <div class="slot" data-i="2"></div>
+      <div class="slot" data-i="3"></div>
+      <div class="slot" data-i="4"></div>
+    </section>
+    <section class="carte res" id="carte-res" aria-label="Carte résultats">
+      <h3>RÉSULTATS</h3>
+      <div class="slot" data-i="0"></div>
+      <div class="slot" data-i="1"></div>
+      <div class="slot" data-i="2"></div>
+      <div class="slot" data-i="3"></div>
+      <div class="slot" data-i="4"></div>
+    </section>
+  </div>
+  <p id="verdict"></p>
+  <div id="actions">
+    <button class="btn" id="btn-nouvelle">Nouvelle paire</button>
+    <button class="btn ghost" id="btn-eclair">⚡ Mode Éclair 60 s</button>
+  </div>
+</main>
+
+<footer>
+  Structure exacte du Dobble&nbsp;: 21 cartes de 5 calculs, 21 résultats, chaque résultat sur 5 cartes, et toujours un seul résultat commun entre deux cartes.
+  Progression en ceintures&nbsp;: tables 0, 1, 2 et 10 · table de 5 · carrés · tables 3 et 4 · table de 6 · tables 7, 8 et 9.
+</footer>
+
+<svg id="arc" aria-hidden="true"></svg>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Plan projectif d'ordre 4 (structure exacte du Dobble) ---------- */
+  // Corps GF(4) : {0,1,α,α+1} codés 0,1,2,3. Addition = XOR ; α·α = α+1.
+  var MUL = [[0,0,0,0],[0,1,2,3],[0,2,3,1],[0,3,1,2]];
+  // Points : 0..15 = (x,y) affines avec y*4+x ; 16..19 = pentes 0..3 ; 20 = pente ∞.
+  function construireLignes() {
+    var lignes = [], l, p, m, b, c;
+    for (m = 0; m < 4; m++) {
+      for (b = 0; b < 4; b++) {
+        l = [];
+        for (p = 0; p < 4; p++) l.push(m === 0 ? (b * 4 + p) : (MUL[m][p] ^ b) * 4 + p);
+        l.push(16 + m);
+        lignes.push(l);
+      }
+    }
+    for (c = 0; c < 4; c++) {
+      l = [];
+      for (p = 0; p < 4; p++) l.push(p * 4 + c);
+      l.push(20);
+      lignes.push(l);
+    }
+    lignes.push([16, 17, 18, 19, 20]);
+    return lignes;
+  }
+  var LIGNES = construireLignes(); // 21 cartes de 5 points-résultats
+
+  /* ---------- Les six jeux (ceintures) : 21 résultats + tables acquises ---------- */
+  var JEUX = [
+    { nom: "Jeu 1", ceinture: "Tables 0, 1, 2 et 10",
+      tables: [0,1,2,10], carres: false,
+      valeurs: [0,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,30,40,50,90,100] },
+    { nom: "Jeu 2", ceinture: "Table de 5",
+      tables: [0,1,2,5,10], carres: false,
+      valeurs: [0,2,3,4,5,6,7,8,9,10,15,20,25,30,35,40,45,50,60,70,80] },
+    { nom: "Jeu 3", ceinture: "Les carrés",
+      tables: [0,1,2,5,10], carres: true,
+      valeurs: [0,1,4,5,9,10,15,16,20,25,30,35,36,45,49,60,64,70,80,81,100] },
+    { nom: "Jeu 4", ceinture: "Tables 3 et 4",
+      tables: [0,1,2,3,4,5,10], carres: true,
+      valeurs: [0,3,4,5,6,8,9,12,15,16,18,20,21,24,27,28,30,32,36,40,45] },
+    { nom: "Jeu 5", ceinture: "Table de 6",
+      tables: [0,1,2,3,4,5,6,10], carres: true,
+      valeurs: [0,5,6,10,12,15,18,21,24,25,27,28,30,35,36,42,45,48,50,54,60] },
+    { nom: "Jeu 6", ceinture: "Tables 7, 8 et 9",
+      tables: [0,1,2,3,4,5,6,7,8,9,10], carres: true,
+      valeurs: [7,8,14,16,21,24,28,32,35,40,42,48,49,56,63,64,70,72,80,81,90] }
+  ];
+
+  function poolCalculs(v, jeu) {
+    var out = [], a, b, okA, okB, carr;
+    for (a = 0; a <= 10; a++) {
+      for (b = 0; b <= 10; b++) {
+        if (a * b !== v) continue;
+        okA = jeu.tables.indexOf(a) !== -1;
+        okB = jeu.tables.indexOf(b) !== -1;
+        carr = a === b && a >= 1;
+        if (okA || okB || (jeu.carres && carr)) {
+          if (a === 0 || b === 0) out.push([a, b]);
+          else { out.push([a, b]); out.push([b, a]); }
+        }
+      }
+    }
+    return out;
+  }
+
+  function shuffle(arr) {
+    var i, j, t;
+    for (i = arr.length - 1; i > 0; i--) {
+      j = Math.floor(Math.random() * (i + 1));
+      t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  /* ---------- Génération d'une partie : cartes = lignes, calculs par point ---------- */
+  function genererPaquets(jeu) {
+    // Pour chaque point (résultat), un pool mélangé : les 5 cartes qui le portent
+    // tirent des écritures différentes du même produit (commutativité).
+    var paquets = jeu.valeurs.map(function (v) { return shuffle(poolCalculs(v, jeu)); });
+    var cartes = LIGNES.map(function (ligne) {
+      return ligne.map(function (point, k) {
+        var pool = paquets[point];
+        var c = pool[k % pool.length];
+        return { point: point, calc: c, val: jeu.valeurs[point] };
+      });
+    });
+    return cartes;
+  }
+
+  /* ---------- État ---------- */
+  var el = function (id) { return document.getElementById(id); };
+  var etat = {
+    jeuIx: 0, cartes: null, cA: -1, cB: -1, commun: -1,
+    score: 0, serie: 0, record: 0,
+    eclair: false, tempsRestant: 0, timerId: null, bloque: false
+  };
+
+  function lireRecord(ix) {
+    var v = 0;
+    try { v = parseInt(localStorage.getItem("dobble-record-" + ix) || "0", 10) || 0; } catch (e) {}
+    return v;
+  }
+  function ecrireRecord(ix, v) {
+    try { localStorage.setItem("dobble-record-" + ix, String(v)); } catch (e) {}
+  }
+
+  /* ---------- Interface ---------- */
+  function construireBoutonsJeux() {
+    var barre = el("jeux");
+    JEUX.forEach(function (j, ix) {
+      var b = document.createElement("button");
+      b.setAttribute("role", "tab");
+      b.innerHTML = j.nom + " <small>" + j.ceinture + "</small>";
+      b.addEventListener("click", function () { changerJeu(ix); });
+      barre.appendChild(b);
+    });
+  }
+
+  function rafraichirBoutonsJeux() {
+    var boutons = el("jeux").children;
+    for (var i = 0; i < boutons.length; i++) boutons[i].classList.toggle("actif", i === etat.jeuIx);
+  }
+
+  function majScorebar() {
+    el("score").textContent = etat.score;
+    el("serie").textContent = etat.serie;
+    el("record").textContent = etat.record;
+    el("temps").textContent = etat.tempsRestant;
+    el("ligne-temps").hidden = !etat.eclair;
+  }
+
+  function nouvellePaire(sansMsg) {
+    var a = Math.floor(Math.random() * 21), b = Math.floor(Math.random() * 21);
+    while (b === a) b = Math.floor(Math.random() * 21);
+    etat.cA = a; etat.cB = b;
+    var pa = etat.cartes[a], pb = etat.cartes[b];
+    var communs = pa.filter(function (s) {
+      return pb.some(function (t) { return t.point === s.point; });
+    });
+    etat.commun = communs[0].point;
+    etat.bloque = false;
+
+    var ordreB = shuffle(pb.slice());
+    var slotsCalc = el("carte-calc").querySelectorAll(".slot");
+    var slotsRes = el("carte-res").querySelectorAll(".slot");
+    pa.forEach(function (s, i) {
+      var d = slotsCalc[i];
+      d.className = "slot";
+      d.innerHTML = s.calc[0] + " × " + s.calc[1] + ' <span class="val">= ?</span>';
+    });
+    ordreB.forEach(function (s, i) {
+      var d = slotsRes[i];
+      d.className = "slot";
+      d.textContent = s.val;
+      d.dataset.point = String(s.point);
+    });
+    el("carte-calc").classList.remove("gagnee");
+    el("carte-res").classList.remove("gagnee");
+    if (!sansMsg) {
+      el("verdict").textContent = "";
+      el("verdict").className = "";
+    }
+  }
+
+  function verifier(slot) {
+    if (etat.bloque) return;
+    var ok = parseInt(slot.dataset.point, 10) === etat.commun;
+    var v = el("verdict");
+    var slotsCalc = el("carte-calc").querySelectorAll(".slot");
+
+    if (ok) {
+      etat.bloque = true;
+      etat.score++;
+      etat.serie++;
+      if (etat.serie > etat.record) {
+        etat.record = etat.serie;
+        if (!etat.eclair) ecrireRecord(etat.jeuIx, etat.record);
+      }
+      slot.classList.add("bon");
+      var pa = etat.cartes[etat.cA];
+      for (var i = 0; i < pa.length; i++) {
+        if (pa[i].point === etat.commun) slotsCalc[i].classList.add("calc-bon");
+      }
+      el("carte-calc").classList.add("gagnee");
+      el("carte-res").classList.add("gagnee");
+      v.textContent = "⚡ " + pa[pa.findIndex(function (s) { return s.point === etat.commun; })].val + " trouvé ! Le courant passe.";
+      v.className = "ok";
+      tracerArc(slot, slotsCalc[pa.findIndex(function (s) { return s.point === etat.commun; })]);
+      majScorebar();
+      setTimeout(function () {
+        if (etat.eclair && etat.tempsRestant <= 0) return;
+        nouvellePaire(true);
+      }, 1100);
+    } else {
+      etat.serie = 0;
+      slot.classList.add("mauvais");
+      el("carte-res").classList.add("buzz");
+      setTimeout(function () { el("carte-res").classList.remove("buzz"); }, 320);
+      v.textContent = "Disjoncté ! Ce résultat n'est pas sur la carte CALCULS…";
+      v.className = "ko";
+      majScorebar();
+    }
+  }
+
+  /* ---------- Arc électrique entre les deux cartes ---------- */
+  function tracerArc(from, to) {
+    var svg = el("arc");
+    var r1 = from.getBoundingClientRect(), r2 = to.getBoundingClientRect();
+    var x1 = r1.left + r1.width / 2, y1 = r1.top + r1.height / 2;
+    var x2 = r2.left + r2.width / 2, y2 = r2.top + r2.height / 2;
+    var pts = [], n = 9, i, t, x, y, amp;
+    for (i = 0; i <= n; i++) {
+      t = i / n;
+      x = x1 + (x2 - x1) * t;
+      y = y1 + (y2 - y1) * t;
+      if (i > 0 && i < n) {
+        amp = 9 * Math.sin(Math.PI * t) * (Math.random() * 2 - 1);
+        x += amp * 0.6; y += amp;
+      }
+      pts.push(x.toFixed(1) + "," + y.toFixed(1));
+    }
+    var d = "M" + pts.join(" L");
+    svg.innerHTML =
+      '<path d="' + d + '" fill="none" stroke="rgba(184,255,62,.35)" stroke-width="7" stroke-linecap="round">' +
+      '<animate attributeName="opacity" values="1;.6;1;.6;1" dur="0.5s" repeatCount="indefinite"/></path>' +
+      '<path d="' + d + '" fill="none" stroke="#b8ff3e" stroke-width="2.4" stroke-linecap="round" ' +
+      'style="filter:drop-shadow(0 0 6px rgba(184,255,62,.9))">' +
+      '<animate attributeName="stroke-dasharray" values="0 600;600 0" dur="0.25s" fill="freeze"/>' +
+      '<animate attributeName="opacity" values="1;1;0" dur="1.05s" begin="0.25s" fill="freeze"/></path>';
+    setTimeout(function () { svg.innerHTML = ""; }, 1400);
+  }
+
+  /* ---------- Mode Éclair ---------- */
+  function demarrerEclair() {
+    etat.eclair = true;
+    etat.tempsRestant = 60;
+    etat.score = 0;
+    etat.serie = 0;
+    etat.bloque = false;
+    el("btn-eclair").disabled = true;
+    el("btn-eclair").textContent = "⚡ Partie en cours…";
+    el("verdict").textContent = "Éclair lancé — 60 secondes !";
+    el("verdict").className = "";
+    majScorebar();
+    nouvellePaire(true);
+    clearInterval(etat.timerId);
+    etat.timerId = setInterval(function () {
+      etat.tempsRestant--;
+      majScorebar();
+      if (etat.tempsRestant <= 0) finEclair();
+    }, 1000);
+  }
+
+  function finEclair() {
+    clearInterval(etat.timerId);
+    etat.eclair = false;
+    etat.bloque = true;
+    el("btn-eclair").disabled = false;
+    el("btn-eclair").textContent = "⚡ Mode Éclair 60 s";
+    var v = el("verdict");
+    if (etat.score > lireRecordEclair(etat.jeuIx)) {
+      ecrireRecordEclair(etat.jeuIx, etat.score);
+      v.textContent = "⏱ Temps écoulé ! " + etat.score + " paires — nouveau record ⚡";
+    } else {
+      v.textContent = "⏱ Temps écoulé ! " + etat.score + " paires (record : " + lireRecordEclair(etat.jeuIx) + ")";
+    }
+    v.className = "ok";
+    majScorebar();
+  }
+
+  function lireRecordEclair(ix) {
+    var v = 0;
+    try { v = parseInt(localStorage.getItem("dobble-eclair-" + ix) || "0", 10) || 0; } catch (e) {}
+    return v;
+  }
+  function ecrireRecordEclair(ix, v) {
+    try { localStorage.setItem("dobble-eclair-" + ix, String(v)); } catch (e) {}
+  }
+
+  /* ---------- Changement de jeu ---------- */
+  function changerJeu(ix) {
+    clearInterval(etat.timerId);
+    etat.jeuIx = ix;
+    etat.cartes = genererPaquets(JEUX[ix]);
+    etat.score = 0; etat.serie = 0; etat.record = lireRecord(ix);
+    etat.eclair = false; etat.tempsRestant = 0; etat.bloque = false;
+    el("btn-eclair").disabled = false;
+    el("btn-eclair").textContent = "⚡ Mode Éclair 60 s";
+    rafraichirBoutonsJeux();
+    majScorebar();
+    nouvellePaire();
+  }
+
+  /* ---------- Démarrage ---------- */
+  construireBoutonsJeux();
+  el("carte-res").addEventListener("click", function (e) {
+    var slot = e.target.closest(".slot");
+    if (slot && slot.dataset.point !== undefined) verifier(slot);
+  });
+  el("btn-nouvelle").addEventListener("click", function () { nouvellePaire(); });
+  el("btn-eclair").addEventListener("click", demarrerEclair);
+  el("btn-regles").addEventListener("click", function () { el("regles").hidden = false; });
+  el("fermer-regles").addEventListener("click", function () { el("regles").hidden = true; });
+  changerJeu(0);
+})();
+</script>
+</body>
+</html>
