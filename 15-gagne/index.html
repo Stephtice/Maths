@@ -175,6 +175,53 @@ h1 .volt{color:var(--lime); text-shadow:0 0 6px var(--lime),0 0 24px var(--lime)
   margin:16px auto 0; max-width:760px; border:1px solid var(--line); border-radius:16px; padding:16px 20px;
   background:rgba(8,14,32,.75); font-size:.86rem; color:#9db9e2; line-height:1.65;
 }
+/* Panneaux fixes haut gauche / haut droite */
+.btn-rules{
+  position:fixed; top:12px; left:12px; z-index:40;
+  border:1px solid var(--neon); border-radius:999px; padding:8px 16px;
+  background:rgba(8,14,32,.9); color:var(--neon); font-weight:800; font-size:.82rem;
+  letter-spacing:.08em; cursor:pointer;
+  box-shadow:0 0 14px rgba(62,242,255,.4); backdrop-filter:blur(6px);
+  transition:box-shadow .15s, transform .12s;
+}
+.btn-rules:hover{box-shadow:0 0 22px rgba(62,242,255,.7); transform:translateY(-1px)}
+#panel-rules{
+  position:fixed; top:56px; left:12px; z-index:41;
+  max-width:300px; max-height:78vh; overflow-y:auto;
+  border:1px solid var(--neon); border-radius:16px; padding:14px 18px;
+  background:rgba(8,14,32,.95); font-size:.84rem; color:#9db9e2; line-height:1.6;
+  box-shadow:0 0 26px rgba(62,242,255,.35); backdrop-filter:blur(8px);
+}
+#panel-rules[hidden]{display:none}
+#panel-variantes{
+  position:fixed; top:12px; right:12px; z-index:40;
+  width:264px; max-width:calc(100vw - 24px);
+  border:1px solid var(--line); border-radius:16px; padding:12px 14px;
+  background:rgba(10,18,40,.92); backdrop-filter:blur(8px);
+  box-shadow:0 0 22px rgba(157,92,255,.25);
+}
+#panel-variantes .pv-title{
+  font-size:.68rem; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--violet); text-shadow:0 0 10px rgba(157,92,255,.6);
+  margin:0 0 8px; text-align:center;
+}
+#panel-variantes .chips{display:flex; flex-direction:column; gap:6px}
+#panel-variantes .chip{width:100%; text-align:left}
+#panel-variantes .chip.on{
+  background:linear-gradient(135deg, rgba(157,92,255,.2), rgba(62,242,255,.2));
+  border-color:var(--violet);
+  box-shadow:0 0 10px rgba(157,92,255,.5), inset 0 0 12px rgba(157,92,255,.12);
+}
+.btn-close-pv{
+  display:block; width:100%; margin-top:10px; padding:6px 0;
+  border:1px solid var(--line); border-radius:8px; background:transparent;
+  color:#7f9cc7; font-weight:700; font-size:.75rem; cursor:pointer;
+}
+.btn-close-pv:hover{border-color:var(--violet); color:#fff}
+@media (max-width:700px){
+  #panel-variantes{width:216px; padding:10px 10px}
+  .btn-rules{top:8px; left:8px; padding:7px 12px}
+}
 .retour{
   color:#7f9cc7; text-decoration:none; font-size:.88rem; font-weight:600; letter-spacing:.05em;
 }
@@ -193,6 +240,32 @@ kbd{
 <body>
 <canvas id="sparkCanvas"></canvas>
 <div class="wrap">
+  <button class="btn-rules" id="btnHelp">📖 Règles</button>
+
+  <div id="panel-rules" hidden>
+    <h2>⚡ Règles du jeu</h2>
+    <p><b>But :</b> totaliser la <b>cible</b> en additionnant les nombres de ses jetons (dans la variante multi-opérations, on peut combiner <kbd>+</kbd>, <kbd>−</kbd>, <kbd>×</kbd> — par ex. 9 + 8 − 2 = 15 ou 3 × 4 + 3 = 15).</p>
+    <p><b>1.</b> À tour de rôle, chaque joueur <b>pose</b> un jeton sur une case libre (des jetons des deux joueurs peuvent partager une case).<br>
+    <b>2.</b> Le total des <b>3 jetons</b> doit atteindre la cible.<br>
+    <b>3.</b> Quand tous les jetons sont posés, si personne n'a gagné, chacun <b>déplace</b> un jeton vers une case libre, jusqu'à ce qu'un joueur atteigne la cible.</p>
+    <p><b>Pour déplacer :</b> clique sur un de tes jetons, puis sur la case de destination.</p>
+    <p style="color:#6f8fc2; font-size:.78rem; margin-bottom:0">Astuce : les points néon sous chaque joueur s'organisent en <b>barres de 5</b> — une collection bien rangée se lit d'un coup d'œil !</p>
+    <button class="btn-close-pv" id="btnCloseRules">✕ Fermer</button>
+  </div>
+
+  <aside id="panel-variantes">
+    <p class="pv-title">Variantes</p>
+    <div class="chips" id="cfgVar">
+      <button class="chip on" data-v="std">Classique 1–9 · cible 15</button>
+      <button class="chip" data-v="con">Constellations 1–5 · cible 9 · 2 jetons</button>
+      <button class="chip" data-v="fil">File limitée 1–5 · cible 9 · 2 jetons</button>
+      <button class="chip" data-v="mod">File modifiée 10–18 · cible 30</button>
+      <button class="chip" data-v="gra">Cible 24 · file 1–12</button>
+      <button class="chip" data-v="ops">Multi-opérations + − × · cible 15</button>
+    </div>
+    <button class="btn-close-pv" id="btnHideVar" hidden>✕ Masquer les variantes</button>
+  </aside>
+
   <header>
     <h1>LE <span class="volt">15</span> GAGNE</h1>
     <div class="tagline">Décomposer un nombre en une somme</div>
@@ -210,17 +283,6 @@ kbd{
         <button class="chip" data-v="ai">⚡ Ordinateur</button>
       </div>
     </div>
-    <div><label>Variante</label>
-      <div class="chips" id="cfgVar">
-        <button class="chip on" data-v="std">Classique 1–9 · cible 15</button>
-        <button class="chip" data-v="con">Constellations 1–5 · cible 9 · 2 jetons</button>
-        <button class="chip" data-v="fil">File limitée 1–5 · cible 9 · 2 jetons</button>
-        <button class="chip" data-v="mod">File modifiée 10–18 · cible 30</button>
-        <button class="chip" data-v="gra">Cible 24 · file 1–12</button>
-        <button class="chip" data-v="ops">Multi-opérations + − × · cible 15</button>
-      </div>
-    </div>
-    <button class="btn ghost" id="btnHelp">Règles</button>
     <button class="btn" id="btnNew">⟳ Nouvelle partie</button>
   </div>
 
@@ -243,16 +305,7 @@ kbd{
 
   <div class="board" id="board" data-target="15"></div>
 
-  <div class="rules" id="rules" style="display:none">
-    <h2>⚡ Règles du jeu</h2>
-    <p><b>But :</b> totaliser la <b>cible</b> en additionnant les nombres de ses jetons (dans la variante multi-opérations, on peut combiner <kbd>+</kbd>, <kbd>−</kbd>, <kbd>×</kbd> — par ex. 9 + 8 − 2 = 15 ou 3 × 4 + 3 = 15).</p>
-    <p><b>1.</b> À tour de rôle, chaque joueur <b>pose</b> un jeton sur une case libre (on peut jouer sur la même case que l'adversaire).<br>
-    <b>2.</b> Le total des <b>3 jetons</b> doit atteindre la cible.<br>
-    <b>3.</b> Quand tous les jetons sont posés, si personne n'a gagné, chacun <b>déplace</b> un jeton vers une case libre, jusqu'à ce qu'un joueur atteigne la cible.</p>
-    <p><b>Pour déplacer :</b> clique sur un de tes jetons, puis sur la case de destination.</p>
-    <p style="color:#6f8fc2; font-size:.78rem; margin-bottom:0">Astuce : les points néon sous chaque joueur s'organisent en <b>barres de 5</b> — une collection bien rangée se lit d'un coup d'œil !</p>
   </div>
-</div>
 
 <script>
 /* ================= Electronique de fond : ~320 électrons organisés en grille ================= */
@@ -551,10 +604,12 @@ bindChips('cfgOpp', 'opp');
 bindChips('cfgVar', 'var');
 $('btnNew').addEventListener('click', newGame);
 $('btnHelp').addEventListener('click', () => {
-  const r = $('rules');
-  r.style.display = r.style.display === 'none' ? 'block' : 'none';
+  const p = $('panel-rules');
+  p.hidden = !p.hidden;
 });
-$('rules').style.display = 'none';
+$('btnCloseRules').addEventListener('click', () => {
+  $('panel-rules').hidden = true;
+});
 newGame();
 </script>
 </body>
