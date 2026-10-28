@@ -8,42 +8,41 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; min-height: 100vh;
-    background: #fdf6ec;
+    background:radial-gradient(1200px 700px at 70% -10%, #12204a 0%, #040814 60%);
     font-family: "Segoe UI", system-ui, sans-serif;
-    color: #5b4636;
+    color: #cfe4ff;
     display: flex; flex-direction: column; align-items: center;
     padding: 40px 20px;
   }
   header { text-align: center; margin-bottom: 36px; }
   h1 {
-    margin: 0; color: #7f4f24; font-size: 2rem;
+    margin: 0; font-size: 2rem; letter-spacing:.06em; background:linear-gradient(135deg,#3ef2ff,#b8ff3e); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(62,242,255,.45));
   }
-  header p { margin: 10px 0 0; font-size: 1.05rem; }
+  header p { margin: 10px 0 0; font-size: 1.05rem; color:#7f9cc7; }
   .grid {
     display: flex; flex-wrap: wrap; gap: 22px;
     justify-content: center; max-width: 900px; width: 100%;
   }
   a.card {
     display: block; text-decoration: none;
-    background: #fffdf8; border: 2px solid #e0c9a6; border-radius: 14px;
+    background:linear-gradient(180deg, rgba(13,22,48,.85), rgba(6,11,26,.9)); border: 1px solid #24386b; border-radius: 14px;
     padding: 26px 30px; width: 340px; max-width: 100%;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    box-shadow: 0 0 0 1px rgba(62,242,255,.06), 0 8px 30px rgba(0,0,0,.45), inset 0 0 40px rgba(10,20,50,.4);
     transition: transform 0.15s, box-shadow 0.15s;
   }
   a.card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 22px rgba(0,0,0,0.14);
-    border-color: #e76f51;
+    box-shadow: 0 0 24px rgba(62,242,255,.25), inset 0 0 40px rgba(10,20,50,.4); border-color: #3ef2ff;
   }
-  .card h2 { margin: 0 0 8px; color: #e76f51; font-size: 1.25rem; }
-  .card p { margin: 0; line-height: 1.45; font-size: 0.95rem; }
+  .card h2 { margin: 0 0 8px; color: #3ef2ff; font-size: 1.25rem; text-shadow: 0 0 10px rgba(62,242,255,.5); }
+  .card p { margin: 0; line-height: 1.45; font-size: 0.95rem; color: #a9c6ee; }
   .card .tags { margin-top: 14px; }
   .tag {
-    display: inline-block; background: #f7c94833; color: #7f4f24;
+    display: inline-block; background: rgba(62,242,255,.08); color: #9df0ff; border: 1px solid rgba(62,242,255,.25);
     border-radius: 20px; padding: 3px 12px; font-size: 0.8rem;
     margin-right: 6px; margin-top: 4px;
   }
-  footer { margin-top: 40px; font-size: 0.85rem; color: #b0a08a; text-align: center; }
+  footer { margin-top: 40px; font-size: 0.85rem; color: #3d5a8a; text-align: center; }
 </style>
 </head>
 <body>
