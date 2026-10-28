@@ -1,49 +1,101 @@
-#!/bin/bash
-# Installation du site Maths sur Raspberry Pi
-# A lancer a la racine du depot : bash raspberry/install.sh
-set -e
+#!/usr/bin/env bash
+# Installation des applis Maths sur un Raspberry Pi.
+# Usage : bash install.sh
+set -euo pipefail
 
-echo "=== Installation Maths sur Raspberry Pi ==="
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SERVE_DIR="/opt/maths-apps"
+SERVICE_NAME="maths-apps"
+PI_USER="${PI_USER:-$USER}"
 
-if [ ! -f index.html ]; then
-    echo "ERREUR : lancez ce script depuis la racine du depot Maths."
-    echo "  cd Maths && bash raspberry/install.sh"
-    exit 1
+echo "==> Déploiement des applis Maths pour le Raspberry Pi"
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "ERREUR : lancez ce script avec sudo (sudo bash install.sh)" >&2
+  exit 1
 fi
 
-REPO_DIR=$(pwd)
+echo "==> Mise à jour des paquets et installation de git + lighttpd"
+apt-get update
+apt-get install -y git lighttpd
 
-# Dependances systeme : nginx sert les fichiers statiques
-sudo apt-get update -qq
-sudo apt-get install -y -qq nginx
+echo "==> Préparation de ${SERVE_DIR}"
+mkdir -p "${SERVE_DIR}"
+chown -R "${PI_USER}:${PI_USER}" "${SERVE_DIR}"
 
-# Fichiers du site lisibles par nginx
-chmod -R o+rX "$REPO_DIR"
+echo "==> Copie des fichiers (sauf raspberry/)"
+rsync -a --delete --exclude='.git' --exclude='raspberry' "${APP_DIR}/" "${SERVE_DIR}/"
+chown -R "${PI_USER}:${PI_USER}" "${SERVE_DIR}"
 
-# Site nginx : port 8080, racine = ce depot
-sudo tee /etc/nginx/sites-available/maths > /dev/null <<EOF
-server {
-    listen 8080;
-    listen [::]:8080;
-    server_name _;
-    root $REPO_DIR;
-    index index.html;
-    location / {
-        try_files \$uri \$uri/ =404;
-    }
-}
+echo "==> Configuration de lighttpd sur le port 8080"
+cat > /etc/lighttpd/conf-available/50-maths-apps.conf <<EOF
+server.port = 8080
+server.document-root = "${SERVE_DIR}"
+EOF
+ln -sf /etc/lighttpd/conf-available/50-maths-apps.conf /etc/lighttpd/conf-enabled/50-maths-apps.conf
+
+echo "==> Configuration de la synchro automatique depuis GitHub"
+cat > /usr/local/bin/maths-apps-sync.sh <<EOF
+#!/usr/bin/env bash
+# Synchronise les applis depuis GitHub puis rafraîchit le dossier servi.
+set -euo pipefail
+REPO_URL="\${MATHS_REPO_URL:-https://github.com/Stephtice/Maths.git}"
+TMP_DIR="\$(mktemp -d)"
+trap 'rm -rf "\${TMP_DIR}"' EXIT
+git clone --depth 1 "\${REPO_URL}" "\${TMP_DIR}/repo"
+rsync -a --delete --exclude='.git' --exclude='raspberry' "\${TMP_DIR}/repo/" "${SERVE_DIR}/"
+logger -t maths-apps "Synchronisation GitHub terminée"
+EOF
+chmod 755 /usr/local/bin/maths-apps-sync.sh
+
+echo "==> Création du service systemd ${SERVICE_NAME}.service"
+cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
+[Unit]
+Description=Serveur des applis Maths (lighttpd)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/lighttpd -D -f /etc/lighttpd/lighttpd.conf
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/maths /etc/nginx/sites-enabled/maths
-sudo nginx -t
-sudo systemctl enable nginx
-sudo systemctl restart nginx
+cat > "/etc/systemd/system/${SERVICE_NAME}-sync.service" <<EOF
+[Unit]
+Description=Synchro des applis Maths depuis GitHub
+After=network-online.target
+Wants=network-online.target
 
-IP=$(hostname -I | awk '{print $1}')
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/maths-apps-sync.sh
+EOF
+
+cat > "/etc/systemd/system/${SERVICE_NAME}-sync.timer" <<EOF
+[Unit]
+Description=Synchro des applis Maths toutes les 15 minutes
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now "${SERVICE_NAME}.service"
+systemctl enable --now "${SERVICE_NAME}-sync.timer"
+
+IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo ""
-echo "=== Installation terminee ==="
-echo "Site Maths en cours : http://${IP}:8080"
-echo "(nginx redemarre automatiquement a chaque allumage du Pi)"
-echo "Sur le reseau local : http://raspberrypi.local:8080"
-echo ""
-echo "Mise a jour apres un git pull : rien a faire, nginx sert les fichiers en direct."
+echo "✅ Installation terminée."
+echo "   Accueil des applis : http://${IP:-<ip-du-pi>}:8080/"
+echo "   Applis : TRIO, Dobble Éclair, Organiser les cubes, 15 gagne"
+echo "   La synchro GitHub tourne toutes les 15 min (maths-apps-sync.timer)."
