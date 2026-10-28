@@ -48,23 +48,8 @@ logger -t maths-apps "Synchronisation GitHub terminée"
 EOF
 chmod 755 /usr/local/bin/maths-apps-sync.sh
 
-echo "==> Création du service systemd ${SERVICE_NAME}.service"
-cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
-[Unit]
-Description=Serveur des applis Maths (lighttpd)
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/sbin/lighttpd -D -f /etc/lighttpd/lighttpd.conf
-Restart=always
-RestartSec=3
-User=www-data
-Group=www-data
-
-[Install]
-WantedBy=multi-user.target
-EOF
+echo "==> Service systemd lighttpd activé (léger, démarrage auto, redémarrage après coupure)"
+systemctl enable lighttpd
 
 cat > "/etc/systemd/system/${SERVICE_NAME}-sync.service" <<EOF
 [Unit]
@@ -90,7 +75,7 @@ WantedBy=timers.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now "${SERVICE_NAME}.service"
+systemctl restart lighttpd
 systemctl enable --now "${SERVICE_NAME}-sync.timer"
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"

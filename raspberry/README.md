@@ -6,8 +6,7 @@ Le Raspberry Pi héberge **toutes les applis** du dépôt (TRIO, Dobble Éclair,
 
 - Installe `git` et `lighttpd` (serveur web léger, idéal sur Pi).
 - Copie les applis dans `/opt/maths-apps` (le dossier `raspberry/` n'est pas servi).
-- Sert les applis sur le **port 8080** (pas de conflit avec d'autres services).
-- Crée un service systemd `maths-apps` (redémarrage automatique).
+- Sert les applis sur le **port 8080** via le service `lighttpd` (démarrage automatique au boot, redémarrage après coupure de courant).
 - Crée un timer `maths-apps-sync` : **toutes les 15 minutes**, les applis sont re-synchronisées depuis GitHub (`main`). Chaque push sur `main` est donc visible sur le Pi dans le quart d'heure.
 
 ## Installation
@@ -31,10 +30,10 @@ http://<ip-du-pi>:8080/
 ## Commandes utiles
 
 ```bash
-systemctl status maths-apps            # état du serveur
-sudo systemctl restart maths-apps      # redémarrer le serveur
+systemctl status lighttpd               # état du serveur
+sudo systemctl restart lighttpd         # redémarrer le serveur
 sudo systemctl start maths-apps-sync.service  # forcer une synchro GitHub immédiate
-journalctl -u maths-apps -e           # logs du serveur
+journalctl -u lighttpd -e              # logs du serveur
 ```
 
 ## Réseau
