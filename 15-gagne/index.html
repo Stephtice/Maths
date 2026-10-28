@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Le 15 Gagne — Éclair</title>
+<!-- Règles : 2 joueurs (ou ordinateur) posent chacun à tour de rôle leurs 3 jetons sur une file numérique partagée (plusieurs jetons peuvent occuper la même case) ; le premier qui totalise la cible avec ses nombres gagne. Si tous les jetons sont posés sans vainqueur, phase de déplacement : chaque joueur déplace un jeton vers une case libre jusqu'à la cible. Variantes : constellations 1–5 / cible 9 / 2 jetons, file 10–18 / cible 30, file 1–12 / cible 24, multi-opérations (+ − ×, ex. 9+8−2 ou 3×4+3). Le plateau ne se réinitialise que lors du clic sur « Nouvelle partie ». -->
+<style>
+:root{
+  --bg:#040814; --panel:#0a1228; --line:#1b2a4d;
+  --neon:#3ef2ff; --violet:#9d5cff; --lime:#b8ff3e; --pink:#ff4d9e;
+  --p1:#3ef2ff; --p2:#ff4d9e; --ink:#e8f4ff;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:var(--ink);
+  background:radial-gradient(1200px 700px at 70% -10%, #12204a 0%, var(--bg) 60%);
+  overflow-x:hidden;
+}
+#sparkCanvas{position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.85}
+.wrap{position:relative; z-index:1; max-width:1060px; margin:0 auto; padding:18px 14px 60px}
+header{text-align:center; margin-bottom:10px}
+h1{
+  margin:6px 0 2px; font-size:clamp(2rem,6vw,3.4rem); letter-spacing:.14em; font-weight:800;
+  color:#fff;
+  text-shadow:0 0 6px var(--neon),0 0 22px var(--neon),0 0 60px rgba(62,242,255,.45);
+  animation:flicker 6s infinite;
+}
+@keyframes flicker{
+  0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.55} 94%{opacity:1} 96%{opacity:.75} 97%{opacity:1}
+}
+h1 .volt{color:var(--lime); text-shadow:0 0 6px var(--lime),0 0 24px var(--lime)}
+.tagline{color:#7f9cc7; font-size:.85rem; letter-spacing:.28em; text-transform:uppercase}
+.creds{color:#5b7ba8; font-size:.75rem; margin-top:6px}
+.creds b{color:#8fd4ff}
+.creds i{color:#ff8ec2; font-style:normal}
+
+/* Barre de config */
+.config{
+  display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:center;
+  background:linear-gradient(180deg, rgba(23,37,74,.75), rgba(10,18,40,.75));
+  border:1px solid var(--line); border-radius:14px; padding:10px 14px; margin:14px 0;
+  box-shadow:0 0 0 1px rgba(62,242,255,.06), 0 8px 30px rgba(0,0,0,.45);
+  backdrop-filter:blur(6px);
+}
+.config label{font-size:.75rem; letter-spacing:.06em; color:#7f9cc7; text-transform:uppercase; margin-right:2px}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{
+  border:1px solid #24386b; color:#a9c6ee; background:#0d1a36;
+  padding:7px 12px; border-radius:999px; cursor:pointer; font-size:.8rem; font-weight:600;
+  transition:all .18s;
+}
+.chip:hover{border-color:var(--neon); color:#fff}
+.chip.on{
+  background:linear-gradient(135deg, rgba(62,242,255,.18), rgba(157,92,255,.18));
+  border-color:var(--neon); color:#fff;
+  box-shadow:0 0 10px rgba(62,242,255,.5), inset 0 0 12px rgba(62,242,255,.15);
+}
+.btn{
+  border:none; cursor:pointer; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  border-radius:10px; padding:10px 18px; font-size:.8rem; color:#04121f;
+  background:linear-gradient(135deg, var(--neon), var(--lime));
+  box-shadow:0 0 16px rgba(62,242,255,.55);
+  transition:transform .12s, box-shadow .12s;
+}
+.btn:hover{transform:translateY(-1px); box-shadow:0 0 24px rgba(62,242,255,.8)}
+.btn.ghost{background:transparent; color:#7f9cc7; box-shadow:none; border:1px solid var(--line)}
+
+/* Statut */
+.status{
+  text-align:center; margin:12px auto; max-width:720px;
+  min-height:2.4em; font-size:clamp(.95rem,2.4vw,1.15rem); font-weight:700;
+  padding:10px 16px; border-radius:12px;
+  border:1px solid var(--line);
+  background:rgba(10,18,40,.7);
+  transition:border-color .25s, box-shadow .25s;
+}
+.status.p1t{border-color:var(--p1); box-shadow:0 0 18px rgba(62,242,255,.35), inset 0 0 18px rgba(62,242,255,.06)}
+.status.p2t{border-color:var(--p2); box-shadow:0 0 18px rgba(255,77,158,.35), inset 0 0 18px rgba(255,77,158,.06)}
+.status.win{border-color:var(--lime); box-shadow:0 0 26px rgba(184,255,62,.5), inset 0 0 20px rgba(184,255,62,.1); color:#eaffbf}
+
+/* Joueurs / jauges */
+.players{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0}
+@media (max-width:620px){.players{grid-template-columns:1fr}}
+.pcard{
+  border:1px solid var(--line); border-radius:16px; padding:12px 14px;
+  background:linear-gradient(180deg, rgba(16,26,54,.8), rgba(8,14,32,.8));
+  position:relative; transition:box-shadow .25s, border-color .25s;
+}
+.pcard.active{border-color:var(--pc)}
+.pcard.active::after{
+  content:""; position:absolute; inset:-1px; border-radius:16px; pointer-events:none;
+  box-shadow:0 0 22px var(--pglow), inset 0 0 24px var(--pglow);
+}
+.pcard .who{display:flex; justify-content:space-between; align-items:center; font-weight:800; letter-spacing:.04em}
+.pcard .who .tokes{display:flex; gap:5px}
+.pcard .who .tok{width:14px; height:14px; border-radius:50%; background:#20315e; border:1px solid #31467f}
+.pcard .who .tok.used{background:transparent; opacity:.35}
+.pcard .pc-sum{
+  font-family:"Consolas","SF Mono",monospace; font-size:1.5rem; font-weight:800; margin-top:6px;
+  color:var(--pc); text-shadow:0 0 10px var(--pglow);
+}
+.pcard .pc-sum .goal{color:#54749f; font-size:.85rem; text-shadow:none; font-weight:600}
+.pcard .eq{font-family:"Consolas",monospace; color:#9db9e2; font-size:.85rem; min-height:1.15em}
+.pcard .dots{display:flex; gap:10px; margin-top:8px; align-items:flex-end; min-height:34px}
+.grp{display:grid; grid-template-columns:repeat(5,1fr); gap:2px; padding:3px 4px; background:rgba(62,242,255,.05); border:1px solid #1d2f5c; border-radius:6px}
+.grp.five{border-color:rgba(184,255,62,.45); box-shadow:0 0 8px rgba(184,255,62,.18)}
+.pt{
+  width:6px; height:6px; border-radius:50%; background:var(--pc);
+  animation:pop .35s backwards;
+}
+@keyframes pop{from{transform:scale(0); opacity:0} to{transform:scale(1); opacity:1}}
+
+/* Plateau */
+.board{
+  margin:18px auto; display:grid; gap:10px;
+  grid-template-columns:repeat(var(--cols,9),1fr);
+  max-width:900px; padding:16px; border-radius:20px;
+  background:
+    linear-gradient(180deg, rgba(13,22,48,.85), rgba(6,11,26,.9));
+  border:1px solid var(--line);
+  box-shadow:0 0 0 1px rgba(62,242,255,.08), 0 0 44px rgba(62,242,255,.07), inset 0 0 60px rgba(10,20,50,.5);
+  position:relative;
+}
+.board::before{
+  content:"CIBLE " attr(data-target);
+  position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+  font-size:.68rem; font-weight:800; letter-spacing:.3em; color:#0a1426;
+  background:linear-gradient(135deg, var(--lime), var(--neon));
+  padding:3px 14px; border-radius:999px;
+  box-shadow:0 0 16px rgba(184,255,62,.5);
+  white-space:nowrap;
+}
+.cell{
+  position:relative; aspect-ratio:1; min-height:46px; border-radius:12px; cursor:pointer;
+  background:linear-gradient(180deg,#0e1b3c,#091226);
+  border:1px solid #22345f;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  transition:border-color .18s, box-shadow .18s, transform .12s;
+  user-select:none; padding:2px;
+}
+.cell:not(.occupied):hover{border-color:var(--neon); box-shadow:0 0 14px rgba(62,242,255,.5); transform:translateY(-2px)}
+.cell .num{font-size:clamp(1rem,3.4vw,1.5rem); font-weight:800; color:#cfe8ff}
+.cell .dots-mini{display:grid; grid-template-columns:repeat(3,1fr); gap:1px}
+.cell .dots-mini i{width:4px; height:4px; border-radius:50%; background:#5f82bd}
+.cell.occupied{cursor:default}
+.cell.occupied .num{opacity:.28}
+.cell .toks-in{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center; gap:2px;
+  pointer-events:none;
+}
+.cell .tok{
+  position:relative; width:44%; aspect-ratio:1; max-width:30px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:clamp(.7rem,2vw,1rem); color:#04121f;
+  animation:drop .35s cubic-bezier(.2,1.4,.4,1) backwards;
+}
+@keyframes drop{from{transform:translateY(-26px) scale(1.5); opacity:0} to{transform:none; opacity:1}}
+.cell .tok.t1{background:radial-gradient(circle at 32% 30%, #bffcff, var(--p1)); box-shadow:0 0 16px rgba(62,242,255,.8), 0 0 3px #fff}
+.cell .tok.t2{background:radial-gradient(circle at 32% 30%, #ffc2da, var(--p2)); color:#2a0413; box-shadow:0 0 16px rgba(255,77,158,.8), 0 0 3px #fff}
+.cell.sel{
+  border-color:var(--lime);
+  box-shadow:0 0 20px rgba(184,255,62,.6), inset 0 0 18px rgba(184,255,62,.15);
+  animation:pulse 1s infinite;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(184,255,62,.5)} 50%{box-shadow:0 0 26px rgba(184,255,62,.9)}}
+.cell.origin{opacity:.35}
+.cell.origin .tok{animation:none}
+
+/* Règles */
+.rules{
+  margin:16px auto 0; max-width:760px; border:1px solid var(--line); border-radius:16px; padding:16px 20px;
+  background:rgba(8,14,32,.75); font-size:.86rem; color:#9db9e2; line-height:1.65;
+}
+.retour{
+  color:#7f9cc7; text-decoration:none; font-size:.88rem; font-weight:600; letter-spacing:.05em;
+}
+.retour:hover{color:var(--neon); text-shadow:0 0 10px rgba(62,242,255,.6)}
+.rules h2{
+  font-size:.8rem; letter-spacing:.3em; text-transform:uppercase; color:var(--neon);
+  margin:0 0 10px; text-shadow:0 0 10px rgba(62,242,255,.6);
+}
+.rules b{color:#dff2ff}
+kbd{
+  background:#13234a; border:1px solid #2b4076; border-bottom-width:3px;
+  border-radius:5px; padding:1px 7px; font-size:.78em; color:#cfe8ff; font-family:inherit;
+}
+</style>
+</head>
+<body>
+<canvas id="sparkCanvas"></canvas>
+<div class="wrap">
+  <header>
+    <h1>LE <span class="volt">15</span> GAGNE</h1>
+    <div class="tagline">Décomposer un nombre en une somme</div>
+    <div class="creds"><b>■ Joueur 1</b> &nbsp;·&nbsp; <i>■ Joueur 2</i> &nbsp;·&nbsp; 3 jetons · cible à atteindre</div>
+  </header>
+
+  <div style="text-align:center; margin-bottom:6px">
+    <a class="retour" href="../">← Retour aux applis</a>
+  </div>
+
+  <div class="config">
+    <div><label>Adversaire</label>
+      <div class="chips" id="cfgOpp">
+        <button class="chip on" data-v="2j">👤 2 joueurs</button>
+        <button class="chip" data-v="ai">⚡ Ordinateur</button>
+      </div>
+    </div>
+    <div><label>Variante</label>
+      <div class="chips" id="cfgVar">
+        <button class="chip on" data-v="std">Classique 1–9 · cible 15</button>
+        <button class="chip" data-v="con">Constellations 1–5 · cible 9 · 2 jetons</button>
+        <button class="chip" data-v="fil">File limitée 1–5 · cible 9 · 2 jetons</button>
+        <button class="chip" data-v="mod">File modifiée 10–18 · cible 30</button>
+        <button class="chip" data-v="gra">Cible 24 · file 1–12</button>
+        <button class="chip" data-v="ops">Multi-opérations + − × · cible 15</button>
+      </div>
+    </div>
+    <button class="btn ghost" id="btnHelp">Règles</button>
+    <button class="btn" id="btnNew">⟳ Nouvelle partie</button>
+  </div>
+
+  <div class="status" id="status">Nouvelle partie : Joueur 1 commence.</div>
+
+  <div class="players">
+    <div class="pcard" id="card1" style="--pc:var(--p1); --pglow:rgba(62,242,255,.45)">
+      <div class="who"><span>⬡ Joueur 1</span><span class="tokes" id="tok1"></span></div>
+      <div class="pc-sum"><span id="sum1">0</span> <span class="goal">/ <span id="goal1">15</span></span></div>
+      <div class="eq" id="eq1"></div>
+      <div class="dots" id="dots1"></div>
+    </div>
+    <div class="pcard" id="card2" style="--pc:var(--p2); --pglow:rgba(255,77,158,.45)">
+      <div class="who"><span id="name2">◆ Joueur 2</span><span class="tokes" id="tok2"></span></div>
+      <div class="pc-sum"><span id="sum2">0</span> <span class="goal">/ <span id="goal2">15</span></span></div>
+      <div class="eq" id="eq2"></div>
+      <div class="dots" id="dots2"></div>
+    </div>
+  </div>
+
+  <div class="board" id="board" data-target="15"></div>
+
+  <div class="rules" id="rules" style="display:none">
+    <h2>⚡ Règles du jeu</h2>
+    <p><b>But :</b> totaliser la <b>cible</b> en additionnant les nombres de ses jetons (dans la variante multi-opérations, on peut combiner <kbd>+</kbd>, <kbd>−</kbd>, <kbd>×</kbd> — par ex. 9 + 8 − 2 = 15 ou 3 × 4 + 3 = 15).</p>
+    <p><b>1.</b> À tour de rôle, chaque joueur <b>pose</b> un jeton sur une case libre (on peut jouer sur la même case que l'adversaire).<br>
+    <b>2.</b> Le total des <b>3 jetons</b> doit atteindre la cible.<br>
+    <b>3.</b> Quand tous les jetons sont posés, si personne n'a gagné, chacun <b>déplace</b> un jeton vers une case libre, jusqu'à ce qu'un joueur atteigne la cible.</p>
+    <p><b>Pour déplacer :</b> clique sur un de tes jetons, puis sur la case de destination.</p>
+    <p style="color:#6f8fc2; font-size:.78rem; margin-bottom:0">Astuce : les points néon sous chaque joueur s'organisent en <b>barres de 5</b> — une collection bien rangée se lit d'un coup d'œil !</p>
+  </div>
+</div>
+
+<script>
+/* ================= Electronique de fond : ~320 électrons organisés en grille ================= */
+const cv = document.getElementById('sparkCanvas'), cx = cv.getContext('2d');
+let sparks = [], cols = 48, rows = 0, cellW = 26, cellH = 26;
+function resizeSparks(){
+  cv.width = innerWidth; cv.height = innerHeight;
+  cellW = Math.max(22, Math.min(34, innerWidth / cols));
+  cellH = cellW;
+  cols = Math.ceil(innerWidth / cellW); rows = Math.ceil(innerHeight / cellH);
+  sparks = [];
+  for(let r = 0; r < rows; r++) for(let c = 0; c < cols; c++){
+    sparks.push({
+      x: c * cellW + cellW / 2, y: r * cellH + cellH / 2,
+      ph: Math.random() * Math.PI * 2, sp: .8 + Math.random() * 1.6,
+      r: .6 + Math.random() * 1.4, hue: Math.random() < .12 ? (Math.random() < .5 ? 185 : 300) : 205
+    });
+  }
+}
+resizeSparks(); addEventListener('resize', resizeSparks);
+let tGlobal = 0;
+(function animSparks(){
+  tGlobal += .016;
+  cx.clearRect(0, 0, cv.width, cv.height);
+  for(const s of sparks){
+    const a = .12 + .3 * (Math.sin(s.ph + tGlobal * s.sp) * .5 + .5);
+    cx.beginPath();
+    cx.fillStyle = `hsla(${s.hue},100%,70%,${a})`;
+    cx.shadowColor = `hsla(${s.hue},100%,65%,.8)`;
+    cx.shadowBlur = 6;
+    cx.arc(s.x, s.y, s.r, 0, 7);
+    cx.fill();
+  }
+  cx.shadowBlur = 0;
+  requestAnimationFrame(animSparks);
+})();
+
+/* ================= Logique du jeu ================= */
+const VARIANTS = {
+  std: {nums:[1,2,3,4,5,6,7,8,9], target:15, tokens:3, ops:false, constel:false, label:'Classique'},
+  con: {nums:[1,2,3,4,5], target:9, tokens:2, ops:false, constel:true,  label:'Constellations'},
+  fil: {nums:[1,2,3,4,5], target:9, tokens:2, ops:false, constel:false, label:'File limitée'},
+  mod: {nums:[10,11,12,13,14,15,16,17,18], target:30, tokens:3, ops:false, constel:false, label:'File modifiée'},
+  gra: {nums:[1,2,3,4,5,6,7,8,9,10,11,12], target:24, tokens:3, ops:false, constel:false, label:'Cible 24'},
+  ops: {nums:[1,2,3,4,5,6,7,8,9], target:15, tokens:3, ops:true, constel:false, label:'Multi-opérations'}
+};
+let cfg = {opp:'2j', var:'std'};
+let S = {};            // état
+const $ = id => document.getElementById(id);
+
+function newGame(){
+  const v = VARIANTS[cfg.var];
+  S = {
+    v, phase:'place', turn:1, sel:-1,
+    cells: v.nums.map(n => ({n, t:[]})),  // t: liste des joueurs présents sur la case
+    tokens: [0, 0],                       // jetons posés par joueur
+    winner: 0
+  };
+  render(true);
+  setStatus(`Manche ${v.label} — Joueur 1 pose un jeton.`);
+}
+
+/* --- expression & victoire --- */
+function bestExpr(ns){
+  // renvoie la valeur atteignable la plus proche de la cible avec + - × sur ns (1 à 3 nombres)
+  if(ns.length === 1) return {val: ns[0], eq: String(ns[0])};
+  const tgt = S.v.target;
+  let best = null;
+  const consider = (val, eq) => {
+    if(val > 0 && (!best || Math.abs(val - tgt) < Math.abs(best.val - tgt))) best = {val, eq};
+  };
+  if(ns.length === 2){
+    const [a,b] = ns;
+    consider(a+b, a+' + '+b); consider(a*b, a+' × '+b);
+    if(a-b>0) consider(a-b, a+' − '+b);
+    if(b-a>0) consider(b-a, b+' − '+a);
+  } else if(ns.length === 3){
+    const ops = [['+', (x,y)=>x+y], ['−', (x,y)=>{const r=x-y; return r>0?r:NaN;}], ['×', (x,y)=>x*y]];
+    // toutes les permutations des 3 nombres et tous les parenthésages (a∘b)∘c
+    const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+    for(const pm of perms) for(const [s1,f1] of ops) for(const [s2,f2] of ops){
+      const a = ns[pm[0]], b = ns[pm[1]], c = ns[pm[2]];
+      const r1 = f1(a,b);
+      if(isNaN(r1)) continue;
+      const r2 = f2(r1, c);
+      if(isNaN(r2)) continue;
+      consider(r2, `(${a} ${s1} ${b}) ${s2} ${c}`);
+    }
+  }
+  return best || {val: 0, eq: ''};
+}
+function myNums(p){
+  const ns = [];
+  for(const c of S.cells) for(const w of c.t) if(w === p) ns.push(c.n);
+  return ns;
+}
+function sums(p){
+  const ns = myNums(p);
+  if(!S.v.ops) return ns.reduce((a,b)=>a+b,0);
+  return ns.length ? bestExpr(ns).val : 0;
+}
+function eqText(p){
+  const ns = myNums(p);
+  if(!ns.length) return '';
+  if(!S.v.ops) return ns.join(' + ') + ' = ' + sums(p);
+  const be = bestExpr(ns);
+  return ns.length > 1 ? be.eq + ' = ' + be.val : be.eq;
+}
+function checkWin(){
+  if(S.tokens[0] >= S.v.tokens && sums(1) === S.v.target) return 1;
+  if(S.tokens[1] >= S.v.tokens && sums(2) === S.v.target) return 2;
+  return 0;
+}
+function fullTokens(){ return S.tokens[0] >= S.v.tokens && S.tokens[1] >= S.v.tokens; }
+
+/* --- interactions --- */
+function onCell(i){
+  if(S.winner) return;
+  const c = S.cells[i], me = S.turn;
+  if(S.phase === 'place'){
+    if(S.tokens[me-1] >= S.v.tokens){ S.phase='move'; onCell(i); return; }
+    c.t.push(me); S.tokens[me-1]++; after(); return;
+  }
+  // phase déplacement
+  if(c.t.includes(me)){ S.sel = (S.sel === i ? -1 : i); render(); return; }
+  if(S.sel >= 0){
+    if(c.t.length === 0){
+      const from = S.sel;
+      const k = S.cells[from].t.indexOf(me);
+      S.cells[from].t.splice(k,1); c.t.push(me); S.sel = -1; after(); return;
+    }
+    if(c.t.includes(3-me)){ setStatus('Impossible : cette case contient déjà un jeton adverse. Choisis une case libre.'); return; }
+    setStatus('Choisis une case libre pour déplacer ton jeton.'); return;
+  }
+  if(c.t.length === 0) setStatus('Clique d\'abord sur un de tes jetons pour le sélectionner.');
+  else if(c.t.includes(me)) setStatus('Re-clique ton jeton pour le sélectionner, puis une case libre.');
+  else setStatus('Case occupée par l\'adversaire.', 'info');
+}
+function after(){
+  S.sel = -1;
+  const w = checkWin();
+  if(w){ S.winner = w; render(); setStatus(`⚡ Joueur ${w} RÉEMPORTE LA CIBLE ${S.v.target} !`, 'win'); return; }
+  if(fullTokens()) S.phase = 'move';
+  S.turn = 3 - S.turn;
+  render();
+  const who = S.turn === 1 ? 'Joueur 1' : (cfg.opp === 'ai' ? 'Ordinateur' : 'Joueur 2');  setStatus(S.phase === 'place' ? `${who} pose un jeton.` : `${who} : déplace un jeton — clique ton jeton puis une case libre.`);
+  if(cfg.opp === 'ai' && S.turn === 2) setTimeout(aiMove, 620);
+}
+
+/* --- IA --- */
+function aiMove(){
+  if(S.winner) return;
+  if(S.phase === 'place' && S.tokens[1] < S.v.tokens){
+    // 1) coup gagnant immédiat ?
+    for(let i = 0; i < S.cells.length; i++){
+      const c = S.cells[i];
+      if(c.t.includes(2)) continue;
+      c.t.push(2); S.tokens[1]++;
+      const w = checkWin() === 2;
+      c.t.pop(); S.tokens[1]--;
+      if(w){ c.t.push(2); S.tokens[1]++; finishAi('⚡ Ordinateur gagne !'); return; }
+    }
+    // 2) bloquer un coup gagnant de J1 ?
+    let block = -1;
+    for(let i = 0; i < S.cells.length && block < 0; i++){
+      const c = S.cells[i];
+      if(c.t.includes(1)) continue;
+      c.t.push(1); S.tokens[0]++;
+      if(checkWin() === 1) block = i;
+      c.t.pop(); S.tokens[0]--;
+    }
+    // 3) sinon : coup qui rapproche le plus de la cible
+    let pick = -1, pickGap = 1e9;
+    for(let i = 0; i < S.cells.length; i++){
+      const c = S.cells[i];
+      if(c.t.includes(2)) continue;
+      c.t.push(2); S.tokens[1]++;
+      const g = Math.abs(sums(2) - S.v.target);
+      c.t.pop(); S.tokens[1]--;
+      if(g < pickGap){ pickGap = g; pick = i; }
+    }
+    if(pick < 0) pick = 0;
+    const target = block >= 0 ? block : pick;
+    S.cells[target].t.push(2); S.tokens[1]++;
+    after(); return;
+  }
+  if(S.phase === 'move'){
+    const mine = S.cells.map((c,i)=>c.t.includes(2)?i:-1).filter(i=>i>=0);
+    // 1) déplacement gagnant immédiat ?
+    for(const m of mine) for(let d = 0; d < S.cells.length; d++){
+      if(S.cells[d].t.length !== 0 || d === m) continue;
+      S.cells[m].t.splice(S.cells[m].t.indexOf(2),1); S.cells[d].t.push(2);
+      const w = checkWin() === 2;
+      S.cells[d].t.pop(); S.cells[m].t.push(2);
+      if(w){ S.cells[m].t.splice(S.cells[m].t.indexOf(2),1); S.cells[d].t.push(2); finishAi('⚡ Ordinateur gagne !'); return; }
+    }
+    // 2) déplacement qui rapproche le plus de la cible
+    let bestD = -1, bestM = -1, bestGap = 1e9;
+    for(const m of mine) for(let d = 0; d < S.cells.length; d++){
+      if(S.cells[d].t.length !== 0 || d === m) continue;
+      S.cells[m].t.splice(S.cells[m].t.indexOf(2),1); S.cells[d].t.push(2);
+      const g = Math.abs(sums(2) - S.v.target);
+      S.cells[d].t.pop(); S.cells[m].t.push(2);
+      if(g < bestGap){ bestGap = g; bestD = d; bestM = m; }
+    }
+    if(bestD >= 0){
+      S.cells[bestM].t.splice(S.cells[bestM].t.indexOf(2),1);
+      S.cells[bestD].t.push(2);
+    }
+    after();
+  }
+}
+function finishAi(msg){ S.winner = 2; render(); setStatus(msg, 'win'); }
+
+/* --- rendu --- */
+function setStatus(msg, cls){
+  const el = $('status');
+  el.textContent = msg;
+  el.className = 'status ' + (cls || (S.turn === 1 ? 'p1t' : 'p2t'));
+}
+function render(full){
+  const v = S.v;
+  $('board').style.setProperty('--cols', v.nums.length);
+  $('board').dataset.target = v.target;
+  $('goal1').textContent = v.target; $('goal2').textContent = v.target;
+  $('name2').textContent = cfg.opp === 'ai' ? '⚡ Ordinateur' : '◆ Joueur 2';
+
+  const board = $('board');
+  if(full || board.children.length !== v.nums.length){
+    board.innerHTML = '';
+    v.nums.forEach((n, i) => {
+      const d = document.createElement('div');
+      d.className = 'cell'; d.dataset.i = i;
+      d.addEventListener('click', () => onCell(i));
+      board.appendChild(d);
+    });
+  }
+  [...board.children].forEach((d, i) => {
+    const c = S.cells[i];
+    d.className = 'cell' + (c.t.length ? ' occupied' : '') + (S.sel === i ? ' sel' : '');
+    const toks = c.t.map((w, k) => `<span class="tok t${w}">${c.n}</span>`).join('');
+    d.innerHTML = `
+      <span class="num">${c.n}</span>
+      ${v.constel ? `<span class="dots-mini">${constelDots(c.n)}</span>` : ''}
+      <span class="toks-in">${toks}</span>`;
+  });
+
+  for(const p of [1, 2]){
+    const val = sums(p), t = S.tokens[p-1];
+    $('sum' + p).textContent = val;
+    $('eq' + p).textContent = eqText(p);
+    $('card' + p).classList.toggle('active', !S.winner && S.turn === p);
+    const tw = $('tok' + p); tw.innerHTML = '';
+    for(let k = 0; k < v.tokens; k++){
+      const s = document.createElement('span');
+      s.className = 'tok' + (k < t ? ' used' : ''); tw.appendChild(s);
+    }
+    renderDots('dots' + p, val, p);
+  }
+  if(S.winner) $('card' + S.winner).classList.add('active');
+}
+function constelDots(n){
+  let h = '';
+  for(let k = 0; k < n; k++) h += '<i></i>';
+  return h;
+}
+function renderDots(id, val, p){
+  const box = $(id); box.innerHTML = '';
+  const color = getComputedStyle(document.documentElement).getPropertyValue(p === 1 ? '--p1' : '--p2').trim();
+  let k = 0;
+  const groups = Math.ceil(val / 5);
+  for(let g = 0; g < groups; g++){
+    const div = document.createElement('div');
+    div.className = 'grp' + ((g + 1) * 5 <= val ? ' five' : '');
+    const cnt = Math.min(5, val - g * 5);
+    for(let j = 0; j < cnt; j++){
+      const pt = document.createElement('span');
+      pt.className = 'pt'; pt.style.background = color;
+      pt.style.animationDelay = (k * .04) + 's';
+      div.appendChild(pt); k++;
+    }
+    box.appendChild(div);
+  }
+}
+
+/* --- config --- */
+function bindChips(id, key){
+  $(id).querySelectorAll('.chip').forEach(ch => ch.addEventListener('click', () => {
+    $(id).querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    ch.classList.add('on');
+    cfg[key] = ch.dataset.v;
+    newGame();
+  }));
+}
+bindChips('cfgOpp', 'opp');
+bindChips('cfgVar', 'var');
+$('btnNew').addEventListener('click', newGame);
+$('btnHelp').addEventListener('click', () => {
+  const r = $('rules');
+  r.style.display = r.style.display === 'none' ? 'block' : 'none';
+});
+$('rules').style.display = 'none';
+newGame();
+</script>
+</body>
+</html>
