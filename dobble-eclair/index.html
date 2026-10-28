@@ -188,7 +188,7 @@
   <p>Une carte <b>CALCULS</b> et une carte <b>RÉSULTATS</b> sont posées côte à côte : clique d'abord sur <b>un calcul</b> de la carte CALCULS, puis sur <b>sa réponse</b> dans la carte RÉSULTATS. On valide si les deux vont ensemble&nbsp;!</p>
   <p>L'arc électrique ⚡ entre les deux confirme la bonne paire. Une erreur fait disjoncter le circuit&nbsp;!</p>
   <p><b>Mode Éclair</b> : trouve un maximum de paires en 60&nbsp;s. <b>Mode Libre</b> : joue sans chronomètre et bats ton record de série.</p>
-  <p>Six jeux progressifs (ceintures) : chaque jeu n'utilise que des tables déjà travaillées, et fait réviser les précédentes.</p>
+  <p>Six jeux progressifs (ceintures) : chaque jeu n'utilise que des tables déjà travaillées, et fait réviser les précédentes. La dernière version, <b>Toutes les tables</b>, mélange les tables 2 à 10 en révision générale.</p>
   <button class="fermer" id="fermer-regles">Compris ⚡</button>
 </div>
 
@@ -234,7 +234,7 @@
 
 <footer>
   Structure exacte du Dobble&nbsp;: 21 cartes de 5 calculs, 21 résultats, chaque résultat sur 5 cartes, et toujours un seul résultat commun entre deux cartes.
-  Progression en ceintures&nbsp;: tables 0, 1, 2 et 10 · table de 5 · carrés · tables 3 et 4 · table de 6 · tables 7, 8 et 9.
+  Progression en ceintures&nbsp;: tables 0, 1, 2 et 10 · table de 5 · carrés · tables 3 et 4 · table de 6 · tables 7, 8 et 9 · toutes les tables (révision générale).
 </footer>
 
 <svg id="arc" aria-hidden="true"></svg>
@@ -287,7 +287,10 @@
       valeurs: [0,5,6,10,12,15,18,21,24,25,27,28,30,35,36,42,45,48,50,54,60] },
     { nom: "Jeu 6", ceinture: "Tables 7, 8 et 9",
       tables: [0,1,2,3,4,5,6,7,8,9,10], carres: true,
-      valeurs: [7,8,14,16,21,24,28,32,35,40,42,48,49,56,63,64,70,72,80,81,90] }
+      valeurs: [7,8,14,16,21,24,28,32,35,40,42,48,49,56,63,64,70,72,80,81,90] },
+    { nom: "Toutes les tables", ceinture: "Révision générale 2 à 10",
+      tables: [0,1,2,3,4,5,6,7,8,9,10], carres: true,
+      valeurs: [6,12,15,18,20,21,24,27,28,30,35,36,40,42,45,48,54,56,63,72,81] }
   ];
 
   function poolCalculs(v, jeu) {
