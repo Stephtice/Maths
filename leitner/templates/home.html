@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel" style="text-align:center">
+  <p class="big">Apprends les 100 multiplications (tables de 1 à 10) avec la méthode des boîtes de Leitner.</p>
+  <p>Chaque bonne réponse fait monter la carte d'une boîte ; les cartes des hautes boîtes reviennent moins souvent. Crée un compte pour garder tes progrès.</p>
+  <p>
+    <a class="btn" href="{{ url_for('register') }}">Créer un compte</a>
+    &nbsp;
+    <a class="btn" href="{{ url_for('login') }}" style="background:linear-gradient(135deg,#b8ff3e,#7fd12b)">Se connecter</a>
+  </p>
+</div>
+{% endblock %}

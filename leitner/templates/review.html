@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block heading %}Révision — {{ user.username }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <div id="session-view">
+    <p class="progress" id="progress">Chargement…</p>
+    <div class="card-question" id="question">…</div>
+    <form id="answer-form" class="answer-row">
+      <input type="text" id="answer" inputmode="numeric" autocomplete="off" placeholder="?">
+      <button type="submit">Valider</button>
+    </form>
+    <p class="feedback" id="feedback"></p>
+  </div>
+  <div id="done-view" style="display:none; text-align:center">
+    <p class="big">🎉 Rien à réviser pour le moment !</p>
+    <p>Les prochaines cartes reviendront selon leur boîte. À bientôt !</p>
+  </div>
+  <div class="boxes" id="boxes"></div>
+</div>
+<script>
+const q = document.getElementById('question');
+const form = document.getElementById('answer-form');
+const input = document.getElementById('answer');
+const feedback = document.getElementById('feedback');
+const progress = document.getElementById('progress');
+const sessionView = document.getElementById('session-view');
+const doneView = document.getElementById('done-view');
+
+async function loadCard() {
+  const r = await fetch('/api/card');
+  const data = await r.json();
+  if (data.done) {
+    sessionView.style.display = 'none';
+    doneView.style.display = 'block';
+    progress.textContent = '';
+    return;
+  }
+  q.textContent = data.a + ' × ' + data.b;
+  progress.textContent = 'Carte en boîte ' + data.box + ' — reste ' + data.remaining + ' carte(s) à réviser';
+  input.value = '';
+  input.focus();
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const [a, b] = q.textContent.split(' × ').map(Number);
+  const r = await fetch('/api/answer', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({a, b, answer: Number(input.value)})
+  });
+  const data = await r.json();
+  feedback.textContent = data.correct
+    ? '✔ Bonne réponse ! La carte monte en boîte ' + data.box + '.'
+    : '✘ C\'était ' + (a * b) + '. La carte retombe en boîte 1.';
+  feedback.className = 'feedback ' + (data.correct ? 'ok' : 'ko');
+  await loadStats();
+  setTimeout(loadCard, 900);
+});
+
+async function loadStats() {
+  const r = await fetch('/api/stats');
+  const data = await r.json();
+  document.getElementById('boxes').innerHTML = data.boxes
+    .map(b => '<span class="box-chip">Boîte ' + b.box + ' : <b>' + b.count + '</b>' + (b.due_now ? ' (' + b.due_now + ' à réviser)' : '') + '</span>')
+    .join('') + '<span class="box-chip">Apprises (boîte 5) : <b>' + data.learned + '</b> / ' + data.total + '</span>';
+}
+
+loadCard();
+loadStats();
+</script>
+{% endblock %}

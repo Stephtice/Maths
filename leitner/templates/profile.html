@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block heading %}Profil de {{ user.username }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <p class="big">Tes progrès sont enregistrés sur ce compte.</p>
+  <div class="boxes" id="boxes">Chargement…</div>
+</div>
+<script>
+fetch('/api/stats').then(r => r.json()).then(data => {
+  document.getElementById('boxes').innerHTML =
+    '<p style="width:100%;text-align:center">Cartes apprises (boîte 5) : <b style="color:#3ef2ff">' + data.learned + ' / ' + data.total + '</b> — à réviser maintenant : <b style="color:#3ef2ff">' + data.due_now + '</b></p>' +
+    data.boxes.map(b => '<span class="box-chip">Boîte ' + b.box + ' : <b>' + b.count + '</b></span>').join('');
+});
+</script>
+{% endblock %}

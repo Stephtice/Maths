@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Boîtes de Leitner — Tables de multiplication{% endblock %}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: radial-gradient(1200px 700px at 70% -10%, #12204a 0%, #040814 60%);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    color: #cfe4ff;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 40px 20px;
+  }
+  header { text-align: center; margin-bottom: 30px; }
+  h1 {
+    margin: 0; font-size: 2rem; letter-spacing: .06em;
+    background: linear-gradient(135deg, #3ef2ff, #b8ff3e);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(62,242,255,.45));
+  }
+  header p { margin: 10px 0 0; color: #7f9cc7; }
+  nav { margin-top: 14px; display: flex; gap: 14px; justify-content: center; }
+  nav a { color: #9df0ff; text-decoration: none; font-size: .95rem; }
+  nav a:hover { text-decoration: underline; }
+  main { width: 100%; max-width: 560px; }
+  .panel {
+    background: linear-gradient(180deg, rgba(13,22,48,.85), rgba(6,11,26,.9));
+    border: 1px solid #24386b; border-radius: 14px;
+    padding: 26px 30px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.45), inset 0 0 40px rgba(10,20,50,.4);
+  }
+  label { display: block; margin: 14px 0 6px; color: #a9c6ee; font-size: .95rem; }
+  input[type=text], input[type=password] {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #24386b; background: #060b1a; color: #cfe4ff; font-size: 1rem;
+  }
+  input:focus { outline: none; border-color: #3ef2ff; }
+  button, .btn {
+    display: inline-block; margin-top: 20px; padding: 11px 26px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #3ef2ff, #2bb8d8); color: #04121f;
+    font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none;
+  }
+  button:hover, .btn:hover { filter: brightness(1.1); }
+  .error { margin-top: 14px; color: #ff8f8f; font-size: .95rem; }
+  .switch { margin-top: 18px; font-size: .9rem; color: #7f9cc7; }
+  .switch a { color: #9df0ff; }
+  .card-question {
+    text-align: center; font-size: 3rem; font-weight: 700; margin: 18px 0 26px;
+    color: #eaf4ff; text-shadow: 0 0 18px rgba(62,242,255,.35);
+  }
+  .answer-row { display: flex; gap: 10px; }
+  .answer-row input { flex: 1; text-align: center; font-size: 1.4rem; }
+  .feedback { text-align: center; margin-top: 16px; min-height: 1.4em; font-size: 1.05rem; }
+  .ok { color: #b8ff3e; }
+  .ko { color: #ff8f8f; }
+  .progress { margin: 6px 0 18px; color: #7f9cc7; font-size: .9rem; text-align: center; }
+  .boxes { display: flex; gap: 8px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+  .box-chip {
+    border: 1px solid #24386b; border-radius: 8px; padding: 6px 12px;
+    font-size: .85rem; color: #a9c6ee; background: rgba(13,22,48,.8);
+  }
+  .box-chip b { color: #3ef2ff; }
+  .big { font-size: 1.3rem; text-align: center; color: #eaf4ff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{% block heading %}Boîtes de Leitner{% endblock %}</h1>
+  <p>{% block subheading %}Mémorise les tables de multiplication de 1 à 10.{% endblock %}</p>
+  {% if session.user_id %}
+  <nav>
+    <a href="{{ url_for('review') }}">Révision</a>
+    <a href="{{ url_for('profile') }}">Mon profil</a>
+    <a href="{{ url_for('logout') }}">Déconnexion</a>
+  </nav>
+  {% endif %}
+</header>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Inscription' if mode == 'register' else 'Connexion' }} — Leitner{% endblock %}
+{% block heading %}{{ 'Créer un compte' if mode == 'register' else 'Se connecter' }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <form method="post">
+    <label for="username">Pseudo</label>
+    <input type="text" id="username" name="username" required autocomplete="username">
+    <label for="password">Mot de passe</label>
+    <input type="password" id="password" name="password" required autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}">
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <button type="submit">{{ 'S\'inscrire' if mode == 'register' else 'Connexion' }}</button>
+  </form>
+  <p class="switch">
+    {% if mode == 'register' %}
+      Déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a>
+    {% else %}
+      Pas encore de compte ? <a href="{{ url_for('register') }}">Créer un compte</a>
+    {% endif %}
+  </p>
+</div>
+{% endblock %}
